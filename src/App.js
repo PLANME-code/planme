@@ -43,7 +43,7 @@ const CLI_INIT=[
 const RES_INIT=[
   {id:"v1",cid:"c1",rid:"r1",debut:"2026-07-07",fin:"2026-07-09",prix:120,caution:300,acompte:60,statut:"terminee",note:""},
   {id:"v2",cid:"c2",rid:"r3",debut:"2026-07-14",fin:"2026-07-16",prix:140,caution:400,acompte:70,statut:"confirmee",note:"Suite à l'essayage"},
-  {id:"v3",cid:"c3",rid:"r5",debut:"2026-07-19",fin:"2026-07-21",prix:100,caution:300,acompte:0,statut:"confirmee",note:""},
+  {id:"v3",cid:"c3",rid:"r5",debut:"2026-07-19",fin:"2026-07-21",prix:100,caution:300,acompte:50,statut:"confirmee",note:""},
   {id:"v4",cid:"c4",rid:"r2",debut:"2026-07-10",fin:"2026-07-13",prix:160,caution:400,acompte:80,statut:"enCours",note:""},
   {id:"v5",cid:"c5",rid:"r7",debut:"2026-06-15",fin:"2026-06-17",prix:120,caution:300,acompte:120,statut:"terminee",note:""},
   {id:"v6",cid:"c1",rid:"r4",debut:"2026-06-22",fin:"2026-06-24",prix:140,caution:400,acompte:140,statut:"terminee",note:""},
@@ -582,7 +582,8 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
           <Input label="Prix (€)" type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder={rSelected?.prix?.toString()||""}/>
           <Input label="Caution (€)" type="number" value={form.caution} onChange={e=>setForm(p=>({...p,caution:e.target.value}))} placeholder={rSelected?.caution?.toString()||""}/>
         </div>
-        <Input label="Acompte versé (€)" type="number" value={form.acompte} onChange={e=>setForm(p=>({...p,acompte:e.target.value}))} placeholder="0"/>
+        <Input label="Acompte versé (€) *" type="number" value={form.acompte} onChange={e=>setForm(p=>({...p,acompte:e.target.value}))} placeholder="ex: 60" style={{border:!form.acompte?`1.5px solid ${T.rose}`:`1.5px solid ${T.vertM}`}}/>
+        {!form.acompte&&<div style={{fontSize:11,color:T.rose,fontWeight:700,marginTop:-10,marginBottom:12}}>⚠️ L'acompte est obligatoire pour bloquer la pièce</div>}
         {+form.prix>0&&(
           <div style={{background:T.roseL,border:`1.5px solid ${T.roseM}`,borderRadius:14,padding:"12px 14px",marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:T.gris2,marginBottom:4}}><span>Prix dû</span><span>{form.prix}€</span></div>
@@ -591,7 +592,7 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
           </div>
         )}
         <Input label="Note" value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: suite à l'essayage du 11 juil."/>
-        <BtnPrimary onClick={add} disabled={!form.nom||!form.rid||!form.debut}>Confirmer la réservation ✓</BtnPrimary>
+        <BtnPrimary onClick={add} disabled={!form.nom||!form.rid||!form.debut||!form.acompte}>Confirmer la réservation ✓</BtnPrimary>
       </Modal>
     </div>
   );
