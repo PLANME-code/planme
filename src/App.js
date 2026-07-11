@@ -809,26 +809,25 @@ export default function App(){
   const titles={catalogue:"Catalogue",essayages:"Essayages",planning:"Planning",resa:"Réservations",stats:"Statistiques"};
 
   return (
-    <div style={{fontFamily:"'Nunito',sans-serif",background:`linear-gradient(160deg,${T.vert3} 0%,${T.vert2} 18%,${T.fond} 38%,#E8F3EC 100%)`,minHeight:"100vh",maxWidth:430,margin:"0 auto",position:"relative",paddingBottom:80}}>
-      {/* Header Glassmorphism */}
-      <div style={{background:"rgba(255,255,255,0.12)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",padding:"18px 20px 16px",position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.2)",boxShadow:"0 4px 24px rgba(15,61,34,0.12)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {/* Logo pill */}
-          <div style={{background:`linear-gradient(135deg,${T.vert},${T.vert3})`,borderRadius:14,padding:"8px 14px",boxShadow:`0 4px 14px ${T.vert3}55`,border:"1px solid rgba(255,255,255,0.2)"}}>
-            <span style={{fontWeight:900,fontSize:16,color:"#fff",letterSpacing:-0.3}}>Plan<span style={{color:"rgba(255,255,255,0.65)"}}>me</span></span>
-          </div>
-          <div>
-            <div style={{fontWeight:800,fontSize:15,color:T.encre,letterSpacing:-0.3}}>{titles[tab]}</div>
-            <div style={{fontSize:10,color:T.gris1,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:1}}>Gestion locations</div>
-          </div>
+    <div style={{fontFamily:"'Nunito',sans-serif",background:T.fond,minHeight:"100vh",maxWidth:430,margin:"0 auto",position:"relative",paddingBottom:80}}>
+      {/* Header */}
+      <div style={{background:T.blanc,padding:"14px 20px 12px",position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${T.vertM}55`,boxShadow:"0 2px 16px rgba(15,62,34,0.06)"}}>
+        <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+          <span style={{fontWeight:900,fontSize:24,color:T.encre,letterSpacing:-1}}>Plan</span>
+          <span style={{fontWeight:900,fontSize:24,color:T.vert,letterSpacing:-1}}>me</span>
+          <span style={{width:6,height:6,borderRadius:"50%",background:T.rose,display:"inline-block",marginLeft:2,marginBottom:4,flexShrink:0}}/>
         </div>
-        <div style={{width:40,height:40,borderRadius:14,background:"rgba(255,255,255,0.5)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid rgba(255,255,255,0.6)`,boxShadow:"0 2px 8px rgba(15,61,34,0.1)"}}>
-          <TrendingUp size={18} color={T.vert}/>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{background:T.vertL,borderRadius:10,padding:"5px 12px"}}>
+            <span style={{fontSize:12,fontWeight:800,color:T.vert}}>{titles[tab]}</span>
+          </div>
+          <div style={{width:36,height:36,borderRadius:12,background:T.vertL,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <TrendingUp size={16} color={T.vert}/>
+          </div>
         </div>
       </div>
 
-      {/* Zone contenu — fond clair */}
-      <div style={{paddingTop:16,background:`linear-gradient(180deg,transparent 0%,${T.fond} 80px)`,minHeight:"calc(100vh - 70px)"}}>
+      <div style={{paddingTop:16}}>
         {tab==="catalogue"&&<Catalogue cat={cat} setCat={setCat}/>}
         {tab==="essayages"&&<Essayages ess={ess} setEss={setEss} cat={cat} cli={cli} setCli={setCli}/>}
         {tab==="planning"&&<Planning res={res} cat={cat} cli={cli}/>}
