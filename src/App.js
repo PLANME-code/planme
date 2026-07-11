@@ -23,7 +23,7 @@ const TODAY_STR="2026-07-11";
 const TODAY=new Date(TODAY_STR);
 const addDays=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
 const fmt=d=>d instanceof Date?d.toISOString().slice(0,10):d;
-const fmtDate=(s,opts={day:"numeric",month:"short"})=>s?new Date(s).toLocaleDateString("fr-FR",opts):"";
+const fmtDate=(s,opts)=>s?new Date(s).toLocaleDateString("fr-FR",opts||{day:"numeric",month:"short"}):""; const fmtDateFull=(s)=>s?new Date(s).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}):"";
 const fmtDateLong=s=>s?new Date(s).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"}):"";
 
 const CAT_INIT=Array.from({length:16},(_,i)=>({
@@ -431,6 +431,7 @@ const Planning=({res,cat,cli})=>{
 // ─── RÉSERVATIONS ───────────────────────────────────────────
 const Reservations=({res,setRes,cat,cli,setCli})=>{
   const [modal,setModal]=useState(false);
+  const [detail,setDetail]=useState(null);
   const [q,setQ]=useState("");
   const [form,setForm]=useState({nom:"",tel:"",rid:"",debut:"",fin:"",prix:"",caution:"",acompte:"",note:""});
 
@@ -464,7 +465,7 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
         {filtered.map(r=>{
           const robe=cat.find(x=>x.id===r.rid),c=cli.find(x=>x.id===r.cid),reste=r.prix-r.acompte;
           return (
-            <TapCard key={r.id}>
+            <TapCard key={r.id} onClick={()=>setDetail({res:r,robe,cli:c,reste})}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
                 <Avatar color={robe?.shade} nom={c?.nom} size={46}/>
                 <div style={{flex:1}}>
@@ -489,6 +490,80 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
         })}
       </div>
       <FAB onClick={()=>setModal(true)}/>
+
+      {/* Modal détail réservation */}
+      <Modal open={!!detail} onClose={()=>setDetail(null)} title="Détail réservation">
+        {detail&&(()=>{
+          const {res:r,robe,cli:c,reste}=detail;
+          const statCol={confirmee:T.vert,enCours:T.rose,terminee:T.gris2};
+          const statLbl={confirmee:"Confirmée",enCours:"En cours",terminee:"Terminée"};
+          return (
+            <>
+              {/* En-tête cliente + robe */}
+              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18,padding:"14px",background:T.fond,borderRadius:16}}>
+                <Avatar color={robe?.shade} nom={c?.nom} size={52}/>
+                <div>
+                  <div style={{fontWeight:900,fontSize:17,color:T.encre}}>{c?.nom}</div>
+                  <div style={{fontSize:12,color:T.gris2,marginTop:3}}>{c?.tel}</div>
+                  <div style={{marginTop:6}}><Badge label={statLbl[r.statut]||r.statut} color={statCol[r.statut]||T.gris2}/></div>
+                </div>
+              </div>
+
+              {/* Pièce */}
+              <div style={{background:T.blanc,border:`1.5px solid ${T.vertM}`,borderRadius:14,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+                <div style={{width:40,height:40,borderRadius:12,background:robe?.shade||T.vert,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:16,flexShrink:0}}>
+                  {robe?.nom?.[0]||"?"}
+                </div>
+                <div>
+                  <div style={{fontWeight:800,fontSize:13,color:T.encre}}>{robe?.nom}</div>
+                  <div style={{fontSize:11,color:T.gris2,marginTop:2}}>{robe?.categorie} · T.{robe?.taille}</div>
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div style={{background:T.blanc,border:`1.5px solid ${T.vertM}`,borderRadius:14,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+                <Clock size={16} color={T.gris2} style={{flexShrink:0}}/>
+                <div>
+                  <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>Dates</div>
+                  <div style={{fontSize:13,fontWeight:700,color:T.encre}}>{fmtDateFull(r.debut)} → {fmtDateFull(r.fin)}</div>
+                </div>
+              </div>
+
+              {/* Montants */}
+              <div style={{background:T.blanc,border:`1.5px solid ${T.vertM}`,borderRadius:14,padding:"12px 14px",marginBottom:12}}>
+                <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}}>Montants</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                  {[["Prix",`${r.prix}€`,T.vert],["Caution",`${r.caution}€`,T.encre],["Acompte",`${r.acompte}€`,T.gris2]].map(([l,v,c])=>(
+                    <div key={l} style={{background:T.fond,borderRadius:10,padding:"8px",textAlign:"center"}}>
+                      <div style={{fontSize:9,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
+                      <div style={{fontWeight:900,fontSize:16,color:c}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{background:reste>0?T.roseL:T.vertL,borderRadius:12,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:13,fontWeight:700,color:reste>0?T.rose:T.vert}}>Reste à payer</span>
+                  <span style={{fontWeight:900,fontSize:18,color:reste>0?T.rose:T.vert}}>{reste}€</span>
+                </div>
+              </div>
+
+              {/* Caution */}
+              <div style={{background:T.warnL,border:"1.5px solid #F5C0B0",borderRadius:14,padding:"10px 14px",marginBottom:r.note?12:0,display:"flex",gap:9,alignItems:"center"}}>
+                <AlertCircle size={14} color={T.warn} style={{flexShrink:0}}/>
+                <div style={{fontSize:11,color:"#8B3020",fontWeight:600}}>Caution {r.caution}€ — à restituer à la fin de la location</div>
+              </div>
+
+              {/* Note */}
+              {r.note&&(
+                <div style={{background:T.roseL,border:`1.5px solid ${T.roseM}`,borderRadius:14,padding:"10px 14px",display:"flex",gap:9,alignItems:"flex-start"}}>
+                  <FileText size={14} color={T.rose} style={{flexShrink:0,marginTop:1}}/>
+                  <div style={{fontSize:12,color:T.rose,fontWeight:600,fontStyle:"italic"}}>{r.note}</div>
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </Modal>
+
       <Modal open={modal} onClose={()=>setModal(false)} title="Nouvelle réservation">
         <div style={{background:T.vertL,borderRadius:12,padding:"10px 14px",marginBottom:16,fontSize:12,color:T.vert,fontWeight:700,display:"flex",gap:8,alignItems:"center"}}>
           <Sparkles size={14}/>Suite à un essayage ? La cliente est retrouvée automatiquement
