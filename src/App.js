@@ -46,7 +46,7 @@ const RES_INIT=[
   {id:"v3",cid:"c3",rid:"r5",debut:"2026-07-19",fin:"2026-07-21",prix:100,caution:300,acompte:0,statut:"confirmee",note:""},
   {id:"v4",cid:"c4",rid:"r2",debut:"2026-07-10",fin:"2026-07-13",prix:160,caution:400,acompte:80,statut:"enCours",note:""},
   {id:"v5",cid:"c5",rid:"r7",debut:"2026-06-15",fin:"2026-06-17",prix:120,caution:300,acompte:120,statut:"terminee",note:""},
-  {id:"v6",cid:"c1",rid:"r4",debut:"2026-06-22",fin:"2026-06-24",prix:140,caution:400,acompte:0,statut:"terminee",note:""},
+  {id:"v6",cid:"c1",rid:"r4",debut:"2026-06-22",fin:"2026-06-24",prix:140,caution:400,acompte:140,statut:"terminee",note:""},
   {id:"v7",cid:"c2",rid:"r6",debut:"2026-05-10",fin:"2026-05-12",prix:160,caution:400,acompte:80,statut:"terminee",note:""},
   {id:"v8",cid:"c3",rid:"r8",debut:"2026-05-20",fin:"2026-05-22",prix:100,caution:300,acompte:50,statut:"terminee",note:""},
 ];
@@ -479,9 +479,9 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
                 {fmtDate(r.debut)} → {fmtDate(r.fin)}
               </div>
               {r.prix>0&&(
-                <div style={{background:T.fond,borderRadius:12,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:12,color:T.gris2,fontWeight:600}}>Acompte {r.acompte}€ · Reste à payer</span>
-                  <span style={{fontWeight:900,fontSize:15,color:reste>0?T.vert:T.gris2}}>{reste}€</span>
+                <div style={{background:r.statut==="terminee"?T.vertL:reste>0?T.roseL:T.vertL,borderRadius:12,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,color:T.gris2,fontWeight:600}}>{r.statut==="terminee"?"Location terminée":"Acompte "+r.acompte+"€ · Reste à payer"}</span>
+                  <span style={{fontWeight:900,fontSize:15,color:r.statut==="terminee"?T.vert:reste>0?T.rose:T.vert}}>{r.statut==="terminee"?"✓ Soldée":reste+"€"}</span>
                 </div>
               )}
               {r.note&&<div style={{fontSize:11,color:T.rose,marginTop:8,fontStyle:"italic",fontWeight:600}}>{r.note}</div>}
@@ -540,9 +540,9 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
                     </div>
                   ))}
                 </div>
-                <div style={{background:reste>0?T.roseL:T.vertL,borderRadius:12,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:13,fontWeight:700,color:reste>0?T.rose:T.vert}}>Reste à payer</span>
-                  <span style={{fontWeight:900,fontSize:18,color:reste>0?T.rose:T.vert}}>{reste}€</span>
+                <div style={{background:r.statut==="terminee"?T.vertL:reste>0?T.roseL:T.vertL,borderRadius:12,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:13,fontWeight:700,color:r.statut==="terminee"?T.vert:reste>0?T.rose:T.vert}}>{r.statut==="terminee"?"Location soldée ✓":"Reste à payer"}</span>
+                  <span style={{fontWeight:900,fontSize:18,color:r.statut==="terminee"?T.vert:reste>0?T.rose:T.vert}}>{r.statut==="terminee"?"0€":reste+"€"}</span>
                 </div>
               </div>
 
