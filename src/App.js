@@ -383,10 +383,29 @@ const Essayages=({ess,setEss,cat,cli,setCli})=>{
       <Modal open={modal} onClose={()=>setModal(false)} title={`Essayage — ${fmtDate(sel)}`}>
         <Input label="Cliente" value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/>
         <Input label="Téléphone" value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/>
-        <Select label="Pièce à essayer" value={form.rid} onChange={e=>setForm(p=>({...p,rid:e.target.value}))}>
-          <option value="">Choisir une pièce...</option>
-          {cat.map(r=><option key={r.id} value={r.id}>{r.nom} · T.{r.taille}</option>)}
-        </Select>
+        {/* Sélecteur pièce visuel */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>Pièce à essayer</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:200,overflowY:"auto",paddingRight:4}}>
+            {cat.map(r=>{
+              const sel=form.rid===r.id;
+              return (
+                <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id}))} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:14,border:sel?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`,background:sel?T.vertL:T.blanc,cursor:"pointer",transition:"all .15s",boxShadow:sel?`0 2px 8px ${T.vert}33`:"none"}}>
+                  <div style={{width:38,height:38,borderRadius:11,background:`linear-gradient(135deg,${r.shade||T.vert},${r.shade||T.vert}99)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:15,flexShrink:0,boxShadow:`0 2px 8px ${r.shade||T.vert}44`}}>
+                    {r.nom?.[0]?.toUpperCase()||"?"}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:800,fontSize:13,color:sel?T.vert:T.encre,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.nom}</div>
+                    <div style={{fontSize:11,color:T.gris2,marginTop:2}}>{r.categorie} · T.{r.taille}</div>
+                  </div>
+                  {sel&&<div style={{width:20,height:20,borderRadius:"50%",background:T.vert,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <Check size={12} color="#fff"/>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
         <Input label="Heure" type="time" value={form.heure} onChange={e=>setForm(p=>({...p,heure:e.target.value}))}/>
         <Input label="Note" value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: voir aussi T.38"/>
         <BtnPrimary onClick={add} disabled={!form.nom||!form.rid}>Enregistrer l'essayage ✓</BtnPrimary>
@@ -547,7 +566,12 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
               <div style={{background:T.blanc,border:`1.5px solid ${T.vertM}`,borderRadius:14,padding:"12px 14px",marginBottom:12}}>
                 <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}}>Montants</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-                  {[["Prix",`${r.prix}€`,T.vert],["Caution",`${r.caution}€`,T.encre],["Acompte",`${r.acompte}€`,T.gris2]].map(([l,v,c])=>(
+                  {(()=>{
+                const robeCat=cat.find(x=>x.id===r.rid);
+                const prixModifie=robeCat&&r.prix!==robeCat.prix;
+                return null;
+              })()}
+              {[["Prix",`${r.prix}€`,T.vert],["Caution",`${r.caution}€`,T.encre],["Acompte",`${r.acompte}€`,T.gris2]].map(([l,v,c])=>(
                     <div key={l} style={{background:T.fond,borderRadius:10,padding:"8px",textAlign:"center"}}>
                       <div style={{fontSize:9,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}}>{l}</div>
                       <div style={{fontWeight:900,fontSize:16,color:c}}>{v}</div>
@@ -584,16 +608,43 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
         </div>
         <Input label="Cliente" value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/>
         <Input label="Téléphone" value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/>
-        <Select label="Pièce choisie" value={form.rid} onChange={e=>{const r=cat.find(x=>x.id===e.target.value);setForm(p=>({...p,rid:e.target.value,prix:r?.prix?.toString()||"",caution:r?.caution?.toString()||""}));}}>
-          <option value="">Choisir une pièce...</option>
-          {cat.map(r=><option key={r.id} value={r.id}>{r.nom} · T.{r.taille}</option>)}
-        </Select>
+        {/* Sélecteur pièce visuel */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>Pièce choisie</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:220,overflowY:"auto",paddingRight:4}}>
+            {cat.map(r=>{
+              const sel=form.rid===r.id;
+              return (
+                <div key={r.id} onClick={()=>{setForm(p=>({...p,rid:r.id,prix:r.prix?.toString()||"",caution:r.caution?.toString()||""}));}} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",borderRadius:14,border:sel?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`,background:sel?T.vertL:T.blanc,cursor:"pointer",transition:"all .15s",boxShadow:sel?`0 2px 8px ${T.vert}33`:"none"}}>
+                  <div style={{width:38,height:38,borderRadius:11,background:`linear-gradient(135deg,${r.shade||T.vert},${r.shade||T.vert}99)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:15,flexShrink:0,boxShadow:`0 2px 8px ${r.shade||T.vert}44`}}>
+                    {r.nom?.[0]?.toUpperCase()||"?"}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:800,fontSize:13,color:sel?T.vert:T.encre,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.nom}</div>
+                    <div style={{fontSize:11,color:T.gris2,marginTop:2}}>{r.categorie} · T.{r.taille} · {r.prix}€</div>
+                  </div>
+                  {sel&&<div style={{width:20,height:20,borderRadius:"50%",background:T.vert,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <Check size={12} color="#fff"/>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <Input label="Date début" type="date" value={form.debut} onChange={e=>setForm(p=>({...p,debut:e.target.value}))}/>
           <Input label="Date fin" type="date" value={form.fin} onChange={e=>setForm(p=>({...p,fin:e.target.value}))}/>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Input label="Prix (€)" type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder={rSelected?.prix?.toString()||""}/>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:5}}>Prix (€)</div>
+            <input type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder={rSelected?.prix?.toString()||""} style={{width:"100%",background:rSelected&&form.prix&&+form.prix!==rSelected.prix?`linear-gradient(135deg,${T.roseL},${T.blanc})`:`${T.fond}`,border:rSelected&&form.prix&&+form.prix!==rSelected.prix?`1.5px solid ${T.rose}`:`1.5px solid ${T.vertM}`,borderRadius:12,padding:"12px 14px",fontSize:15,fontFamily:"inherit",fontWeight:600,color:T.encre,outline:"none",boxSizing:"border-box"}}/>
+            {rSelected&&form.prix&&+form.prix!==rSelected.prix&&(
+              <div style={{fontSize:10,color:T.rose,fontWeight:700,marginTop:4,display:"flex",alignItems:"center",gap:4}}>
+                ✏️ Prix modifié · catalogue : {rSelected.prix}€
+              </div>
+            )}
+          </div>
           <Input label="Caution (€)" type="number" value={form.caution} onChange={e=>setForm(p=>({...p,caution:e.target.value}))} placeholder={rSelected?.caution?.toString()||""}/>
         </div>
         <Input label="Acompte versé (€) *" type="number" value={form.acompte} onChange={e=>setForm(p=>({...p,acompte:e.target.value}))} placeholder="ex: 60" style={{border:!form.acompte?`1.5px solid ${T.rose}`:`1.5px solid ${T.vertM}`}}/>
@@ -758,22 +809,26 @@ export default function App(){
   const titles={catalogue:"Catalogue",essayages:"Essayages",planning:"Planning",resa:"Réservations",stats:"Statistiques"};
 
   return (
-    <div style={{fontFamily:"'Nunito',sans-serif",background:`linear-gradient(180deg,${T.fond} 0%,#E8F3EC 100%)`,minHeight:"100vh",maxWidth:430,margin:"0 auto",position:"relative",paddingBottom:80}}>
-      {/* Header */}
-      <div style={{background:`linear-gradient(135deg,${T.vert},${T.vert2})`,padding:"16px 18px 14px",position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 4px 20px ${T.vert3}55`}}>
-        <div>
-          <div style={{fontWeight:900,fontSize:22,color:"#fff",letterSpacing:-0.5,textShadow:"0 1px 4px rgba(0,0,0,0.2)"}}>
-            Plan<span style={{color:"rgba(255,255,255,0.75)"}}>me</span>
+    <div style={{fontFamily:"'Nunito',sans-serif",background:`linear-gradient(160deg,${T.vert3} 0%,${T.vert2} 18%,${T.fond} 38%,#E8F3EC 100%)`,minHeight:"100vh",maxWidth:430,margin:"0 auto",position:"relative",paddingBottom:80}}>
+      {/* Header Glassmorphism */}
+      <div style={{background:"rgba(255,255,255,0.12)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",padding:"18px 20px 16px",position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid rgba(255,255,255,0.2)",boxShadow:"0 4px 24px rgba(15,61,34,0.12)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {/* Logo pill */}
+          <div style={{background:`linear-gradient(135deg,${T.vert},${T.vert3})`,borderRadius:14,padding:"8px 14px",boxShadow:`0 4px 14px ${T.vert3}55`,border:"1px solid rgba(255,255,255,0.2)"}}>
+            <span style={{fontWeight:900,fontSize:16,color:"#fff",letterSpacing:-0.3}}>Plan<span style={{color:"rgba(255,255,255,0.65)"}}>me</span></span>
           </div>
-          <div style={{fontSize:11,color:"rgba(255,255,255,0.65)",fontWeight:700,marginTop:1,letterSpacing:"0.05em"}}>{titles[tab]}</div>
+          <div>
+            <div style={{fontWeight:800,fontSize:15,color:T.encre,letterSpacing:-0.3}}>{titles[tab]}</div>
+            <div style={{fontSize:10,color:T.gris1,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:1}}>Gestion locations</div>
+          </div>
         </div>
-        <div style={{width:40,height:40,borderRadius:14,background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,0.25)"}}>
-          <TrendingUp size={18} color="#fff"/>
+        <div style={{width:40,height:40,borderRadius:14,background:"rgba(255,255,255,0.5)",backdropFilter:"blur(10px)",display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid rgba(255,255,255,0.6)`,boxShadow:"0 2px 8px rgba(15,61,34,0.1)"}}>
+          <TrendingUp size={18} color={T.vert}/>
         </div>
       </div>
 
-      {/* Padding top pour le contenu */}
-      <div style={{paddingTop:16}}>
+      {/* Zone contenu — fond clair */}
+      <div style={{paddingTop:16,background:`linear-gradient(180deg,transparent 0%,${T.fond} 80px)`,minHeight:"calc(100vh - 70px)"}}>
         {tab==="catalogue"&&<Catalogue cat={cat} setCat={setCat}/>}
         {tab==="essayages"&&<Essayages ess={ess} setEss={setEss} cat={cat} cli={cli} setCli={setCli}/>}
         {tab==="planning"&&<Planning res={res} cat={cat} cli={cli}/>}
