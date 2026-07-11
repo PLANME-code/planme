@@ -8,11 +8,12 @@ import {
 
 // ─── TOKENS ─────────────────────────────────────────────────
 const T = {
-  vert:"#3A7D57", vert2:"#2E6347", vertL:"#EDF7F1", vertM:"#C8DEC8",
-  rose:"#C48AAE", roseL:"#F5ECF3", roseM:"#E8C4D8",
-  encre:"#1A2E1F", gris1:"#4A6B52", gris2:"#7A9C82", gris3:"#B8D4BC",
-  fond:"#F4FAF6", blanc:"#FFFFFF",
-  warn:"#E05050", warnL:"#FFF0EC",
+  vert:"#2D7A4F", vert2:"#1E5C38", vert3:"#0F3D22", vertL:"#E8F5EE", vertM:"#B8D8C0",
+  rose:"#B8789E", rose2:"#9A5E84", roseL:"#F5EAF3", roseM:"#DDB8CE",
+  encre:"#0F1E13", gris1:"#3A5C42", gris2:"#6B8F74", gris3:"#A8CCAE",
+  fond:"#EEF7F1", blanc:"#FFFFFF",
+  warn:"#D04040", warnL:"#FFF0EC",
+  gold:"#C8962A",
 };
 
 // ─── DONNÉES ────────────────────────────────────────────────
@@ -74,13 +75,13 @@ const useTap = () => {
 
 // ─── ATOMS ──────────────────────────────────────────────────
 const Avatar=({color,nom,size=42})=>(
-  <div style={{width:size,height:size,borderRadius:size*.28,background:color||T.vert,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:size*.38,flexShrink:0,letterSpacing:-0.5}}>
+  <div style={{width:size,height:size,borderRadius:size*.28,background:`linear-gradient(135deg,${color||T.vert},${color||T.vert}BB)`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:size*.38,flexShrink:0,letterSpacing:-0.5,boxShadow:`0 4px 12px ${color||T.vert}55, inset 0 1px 0 rgba(255,255,255,0.25)`}}>
     {nom?.[0]?.toUpperCase()||"?"}
   </div>
 );
 
 const Badge=({label,color=T.vert})=>(
-  <span style={{background:color+"1A",color,fontSize:10,fontWeight:800,padding:"4px 10px",borderRadius:100,whiteSpace:"nowrap",border:`1px solid ${color}33`}}>
+  <span style={{background:`linear-gradient(135deg,${color}22,${color}11)`,color,fontSize:10,fontWeight:800,padding:"4px 10px",borderRadius:100,whiteSpace:"nowrap",border:`1px solid ${color}44`,boxShadow:`0 1px 4px ${color}22`}}>
     {label}
   </span>
 );
@@ -88,7 +89,20 @@ const Badge=({label,color=T.vert})=>(
 const TapCard=({children,onClick,style={}})=>{
   const {pressed,handlers}=useTap();
   return (
-    <div onClick={onClick} {...handlers} style={{background:T.blanc,borderRadius:18,border:`1.5px solid ${T.vertM}`,padding:"14px 16px",marginBottom:10,boxShadow:pressed?"0 1px 4px rgba(58,125,87,0.08)":"0 2px 12px rgba(58,125,87,0.07)",cursor:onClick?"pointer":"default",transform:pressed&&onClick?"scale(0.985)":"scale(1)",transition:"transform .1s, box-shadow .1s",...style}}>
+    <div onClick={onClick} {...handlers} style={{
+      background:`linear-gradient(160deg, ${T.blanc} 0%, #F8FCF9 100%)`,
+      borderRadius:20,
+      border:`1px solid ${T.vertM}88`,
+      padding:"14px 16px",
+      marginBottom:10,
+      boxShadow:pressed
+        ?"0 1px 4px rgba(15,62,34,0.06)"
+        :"0 4px 16px rgba(15,62,34,0.08), 0 1px 4px rgba(15,62,34,0.04)",
+      cursor:onClick?"pointer":"default",
+      transform:pressed&&onClick?"scale(0.984)":"scale(1)",
+      transition:"transform .12s cubic-bezier(.32,1.2,.55,1), box-shadow .12s",
+      ...style
+    }}>
       {children}
     </div>
   );
@@ -113,7 +127,7 @@ const Select=({label,children,...props})=>(
 const BtnPrimary=({children,onClick,disabled=false,style={}})=>{
   const {pressed,handlers}=useTap();
   return (
-    <button onClick={onClick} {...handlers} disabled={disabled} style={{width:"100%",background:disabled?T.gris3:`linear-gradient(135deg,${T.vert},${T.vert2})`,color:"#fff",border:"none",borderRadius:14,padding:"14px",fontWeight:900,fontSize:15,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:disabled?"none":`0 4px 16px ${T.vert}44`,transform:pressed&&!disabled?"scale(0.98)":"scale(1)",transition:"transform .1s",...style}}>
+    <button onClick={onClick} {...handlers} disabled={disabled} style={{width:"100%",background:disabled?T.gris3:`linear-gradient(160deg,${T.vert},${T.vert3})`,color:"#fff",border:disabled?"none":"1px solid rgba(255,255,255,0.15)",borderRadius:16,padding:"15px",fontWeight:900,fontSize:15,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:disabled?"none":`0 6px 20px ${T.vert3}55, inset 0 1px 0 rgba(255,255,255,0.15)`,transform:pressed&&!disabled?"scale(0.977)":"scale(1)",transition:"transform .12s cubic-bezier(.32,1.2,.55,1)",...style}}>
       {children}
     </button>
   );
@@ -201,7 +215,7 @@ const NavMois=({mois,setMois})=>(
 const FAB=({onClick})=>{
   const {pressed,handlers}=useTap();
   return (
-    <button onClick={onClick} {...handlers} style={{position:"fixed",bottom:90,right:20,width:54,height:54,borderRadius:"50%",background:`linear-gradient(135deg,${T.vert},${T.vert2})`,color:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 6px 20px ${T.vert}55`,zIndex:150,transform:pressed?"scale(0.92)":"scale(1)",transition:"transform .1s cubic-bezier(.32,1.2,.55,1)"}}>
+    <button onClick={onClick} {...handlers} style={{position:"fixed",bottom:90,right:20,width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${T.vert},${T.vert3})`,color:"#fff",border:"2px solid rgba(255,255,255,0.2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 8px 28px ${T.vert3}66, 0 2px 8px ${T.vert3}44`,zIndex:150,transform:pressed?"scale(0.90)":"scale(1)",transition:"transform .12s cubic-bezier(.32,1.2,.55,1)"}}>
       <Plus size={24}/>
     </button>
   );
@@ -628,21 +642,21 @@ const Stats=({res,cat,cli})=>{
     <div style={{padding:"0 16px"}}>
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-        <TapCard style={{margin:0}}>
-          <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Chiffre d'affaires</div>
-          <div style={{fontWeight:900,fontSize:26,color:T.vert,lineHeight:1}}>{caTotal.toLocaleString("fr-FR")}€</div>
-          <div style={{fontSize:11,color:T.gris2,marginTop:4}}>{res.length} réservations</div>
+        <TapCard style={{margin:0,background:`linear-gradient(135deg,${T.vert}18,${T.vertL})`,border:`1px solid ${T.vert}33`}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.vert,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Chiffre d'affaires</div>
+          <div style={{fontWeight:900,fontSize:28,color:T.vert,lineHeight:1,textShadow:`0 1px 4px ${T.vert}33`}}>{caTotal.toLocaleString("fr-FR")}€</div>
+          <div style={{fontSize:11,color:T.gris1,marginTop:5,fontWeight:700}}>{res.length} réservations</div>
         </TapCard>
-        <TapCard style={{margin:0}}>
+        <TapCard style={{margin:0,background:`linear-gradient(135deg,${T.encre}08,${T.blanc})`}}>
           <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Panier moyen</div>
-          <div style={{fontWeight:900,fontSize:26,color:T.encre,lineHeight:1}}>{pm}€</div>
-          <div style={{fontSize:11,color:T.gris2,marginTop:4}}>par réservation</div>
+          <div style={{fontWeight:900,fontSize:28,color:T.encre,lineHeight:1}}>{pm}€</div>
+          <div style={{fontSize:11,color:T.gris2,marginTop:5,fontWeight:700}}>par réservation</div>
         </TapCard>
       </div>
-      <TapCard style={{marginBottom:10}}>
-        <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Cautions en cours</div>
-        <div style={{fontWeight:900,fontSize:26,color:T.rose,lineHeight:1}}>{cautions.toLocaleString("fr-FR")}€</div>
-        <div style={{fontSize:11,color:T.gris2,marginTop:4}}>à restituer sur réservations actives</div>
+      <TapCard style={{marginBottom:10,background:`linear-gradient(135deg,${T.rose}18,${T.roseL})`,border:`1px solid ${T.rose}33`}}>
+        <div style={{fontSize:10,fontWeight:800,color:T.rose,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>Cautions en cours</div>
+        <div style={{fontWeight:900,fontSize:28,color:T.rose2,lineHeight:1,textShadow:`0 1px 4px ${T.rose}33`}}>{cautions.toLocaleString("fr-FR")}€</div>
+        <div style={{fontSize:11,color:T.gris1,marginTop:5,fontWeight:700}}>à restituer sur réservations actives</div>
       </TapCard>
 
       {/* Graphique interactif */}
@@ -744,17 +758,17 @@ export default function App(){
   const titles={catalogue:"Catalogue",essayages:"Essayages",planning:"Planning",resa:"Réservations",stats:"Statistiques"};
 
   return (
-    <div style={{fontFamily:"'Nunito',sans-serif",background:T.fond,minHeight:"100vh",maxWidth:430,margin:"0 auto",position:"relative",paddingBottom:80}}>
+    <div style={{fontFamily:"'Nunito',sans-serif",background:`linear-gradient(180deg,${T.fond} 0%,#E8F3EC 100%)`,minHeight:"100vh",maxWidth:430,margin:"0 auto",position:"relative",paddingBottom:80}}>
       {/* Header */}
-      <div style={{background:T.blanc,borderBottom:`1.5px solid ${T.vertM}`,padding:"14px 18px 12px",position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{background:`linear-gradient(135deg,${T.vert},${T.vert2})`,padding:"16px 18px 14px",position:"sticky",top:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:`0 4px 20px ${T.vert3}55`}}>
         <div>
-          <div style={{fontWeight:900,fontSize:20,color:T.encre,letterSpacing:-0.5}}>
-            Plan<span style={{color:T.vert}}>me</span>
+          <div style={{fontWeight:900,fontSize:22,color:"#fff",letterSpacing:-0.5,textShadow:"0 1px 4px rgba(0,0,0,0.2)"}}>
+            Plan<span style={{color:"rgba(255,255,255,0.75)"}}>me</span>
           </div>
-          <div style={{fontSize:11,color:T.gris2,fontWeight:600,marginTop:1}}>{titles[tab]}</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.65)",fontWeight:700,marginTop:1,letterSpacing:"0.05em"}}>{titles[tab]}</div>
         </div>
-        <div style={{width:38,height:38,borderRadius:12,background:T.vertL,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <TrendingUp size={18} color={T.vert}/>
+        <div style={{width:40,height:40,borderRadius:14,background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,0.25)"}}>
+          <TrendingUp size={18} color="#fff"/>
         </div>
       </div>
 
@@ -768,7 +782,7 @@ export default function App(){
       </div>
 
       {/* Tab bar avec indicateur animé */}
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.blanc,borderTop:`1.5px solid ${T.vertM}`,display:"flex",zIndex:200}}>
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.blanc,borderTop:"none",display:"flex",zIndex:200,boxShadow:"0 -4px 24px rgba(15,30,19,0.12)"}}>
         {TABS.map(({id,label,Icon})=>{
           const active=tab===id;
           return (
