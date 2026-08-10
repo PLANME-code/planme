@@ -303,10 +303,28 @@ const Catalogue=({cat,setCat,showToast})=>{
 
   const filtered=useMemo(()=>cat.filter(r=>(catF==="Toutes"||r.categorie===catF)&&r.nom.toLowerCase().includes(q.toLowerCase())),[cat,catF,q]);
 
-  const add=()=>{
+  const add=async()=>{
     if(!form.nom||!form.prix)return;
-    setCat(p=>[...p,{id:`r${Date.now()}`,shade:SHADES[p.length%8],...form,prix:+form.prix,caution:+form.caution}]);
-    setModal(false);setForm({nom:"",categorie:"",taille:"",tailleMin:"",tailleMax:"",prix:"",caution:""});
+    const shade=SHADES[cat.length%8];
+    const tailleVal=form.tailleMax?`${form.tailleMin||""} → ${form.tailleMax}`:form.tailleMin||"";
+    let photoUrl=null;
+    if(form.photoFile){
+      try{ photoUrl=await sb.uploadPhoto(form.photoFile); }catch(e){ console.log('photo err',e); }
+    }
+    const data={nom:form.nom,categorie:form.categorie,taille:tailleVal,prix:+form.prix,caution:+form.caution,shade,photo_url:photoUrl};
+    console.log('Inserting:',data);
+    try{
+      const res=await sb.insert('robes',data);
+      console.log('Result:',res);
+      if(Array.isArray(res)&&res[0]) setCat(p=>[...p,res[0]]);
+      else setCat(p=>[...p,{id:`r${Date.now()}`,...data}]);
+    }catch(e){
+      console.log('Insert error:',e);
+      setCat(p=>[...p,{id:`r${Date.now()}`,...data}]);
+    }
+    setModal(false);
+    setForm({nom:"",categorie:"",taille:"",tailleMin:"",tailleMax:"",prix:"",caution:"",photoUrl:null,photoFile:null});
+    showToast?.(`✨ ${form.nom} ajoutée !`);
   };
 
   return (
