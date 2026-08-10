@@ -2,9 +2,61 @@ import React from "react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Search, Calendar, BarChart3, Plus, X, ChevronLeft, ChevronRight,
-  Package, Sparkles, Check, AlertCircle, TrendingUp, Clock, ArrowLeft,
-  Phone, FileText, Star
+  Package, Sparkles, Check, AlertCircle, TrendingUp, Clock, FileText
 } from "lucide-react";
+
+// ─── SUPABASE ───────────────────────────────────────────────
+const SUPABASE_URL = "https://drgiyafkcmfydkabctxa.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2l5YWZrY21meWRrYWJjdHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNTA5MDAsImV4cCI6MjEwMTkyNjkwMH0.Ak3tEWz5PL9DRhGKOswtqujW7dHM3-x79hd8ItteIQo";
+
+const sb = {
+  async query(table, select='*', order='created_at') {
+    let url = `${SUPABASE_URL}/rest/v1/${table}?select=${select}&order=${order}`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+    return res.json();
+  },
+  async insert(table, data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  async update(table, id, data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+  async delete(table, id) {
+    await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      }
+    });
+  }
+};
 
 // ─── TOKENS ─────────────────────────────────────────────────
 const T = {
@@ -797,6 +849,38 @@ export default function App(){
   const [cli,setCli]=useState(CLI_INIT);
   const [res,setRes]=useState(RES_INIT);
   const [ess,setEss]=useState(ESS_INIT);
+  const [loading,setLoading]=useState(true);
+  const [dbOk,setDbOk]=useState(false);
+
+  // Charger les données depuis Supabase au démarrage
+  useEffect(()=>{
+    async function loadData(){
+      try {
+        const [robes,clientes,reservations,essayages] = await Promise.all([
+          sb.query('robes','*','created_at'),
+          sb.query('clientes','*','nom'),
+          sb.query('reservations','*','created_at'),
+          sb.query('essayages','*','date'),
+        ]);
+        if(Array.isArray(robes)&&robes.length>0){
+          setCat(robes.map(r=>({...r,shade:r.shade||'#3A7D57'})));
+          setDbOk(true);
+        }
+        if(Array.isArray(clientes)&&clientes.length>0) setCli(clientes);
+        if(Array.isArray(reservations)&&reservations.length>0){
+          setRes(reservations.map(r=>({...r,cid:r.cliente_id,rid:r.robe_id,debut:r.debut,fin:r.fin})));
+        }
+        if(Array.isArray(essayages)&&essayages.length>0){
+          setEss(essayages.map(e=>({...e,cid:e.cliente_id,rid:e.robe_id})));
+        }
+      } catch(e){
+        console.log('Mode démo — Supabase non connecté');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  },[]);
 
   const TABS=[
     {id:"catalogue",label:"Catalogue",Icon:Package},
