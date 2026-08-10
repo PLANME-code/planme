@@ -859,6 +859,40 @@ const Stats=({res,cat,cli})=>{
   );
 };
 
+
+// ─── TOAST ──────────────────────────────────────────────────
+function useToast(){
+  const [toast,setToast]=useState(null);
+  const show=(msg,type='success')=>{
+    setToast({msg,type,key:Date.now()});
+    setTimeout(()=>setToast(null),2800);
+  };
+  return {toast,show};
+}
+
+function Toast({toast}){
+  if(!toast)return null;
+  const colors={success:T.vert,error:'#D04040',info:T.rose};
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  return (
+    <div key={toast.key} style={{
+      position:'fixed',bottom:90,left:'50%',
+      transform:'translateX(-50%)',
+      background:T.blanc,
+      border:`1.5px solid ${colors[toast.type]}33`,
+      borderRadius:14,padding:'12px 20px',
+      display:'flex',alignItems:'center',gap:10,
+      boxShadow:`0 8px 32px rgba(0,0,0,.12)`,
+      zIndex:500,minWidth:220,
+      animation:'toastIn .35s cubic-bezier(.22,1,.36,1) forwards',
+      fontFamily:'inherit',
+    }}>
+      <span style={{fontSize:20}}>{icons[toast.type]}</span>
+      <span style={{fontWeight:800,fontSize:13,color:T.encre}}>{toast.msg}</span>
+    </div>
+  );
+}
+
 // ─── APP ────────────────────────────────────────────────────
 export default function App(){
   const [tab,setTab]=useState("catalogue");
@@ -871,6 +905,16 @@ export default function App(){
   const {toast,show:showToast}=useToast();
 
   // Charger les données depuis Supabase au démarrage
+  useEffect(()=>{
+    const s=document.createElement('style');
+    s.textContent=`
+      @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(16px) scale(.95)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+      @keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+    `;
+    document.head.appendChild(s);
+    return()=>s.remove();
+  },[]);
+
   useEffect(()=>{
     async function loadData(){
       try {
