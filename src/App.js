@@ -1436,7 +1436,7 @@ export default function App() {
           </>}
           {tab==="planning" && <>
             {!seenTabs.planning && <OnboardingBubble tab="planning" onDismiss={()=>dismissOnboarding("planning")}/>}
-            <Planning reservations={reservations} robes={robes} clientes={clientes}/>
+            <Planning key={reservations.length} reservations={reservations} robes={robes} clientes={clientes}/>
           </>}
           {tab==="resa" && <>
             {!seenTabs.resa && <OnboardingBubble tab="resa" onDismiss={()=>dismissOnboarding("resa")}/>}
