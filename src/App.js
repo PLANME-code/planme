@@ -279,7 +279,8 @@ const Catalogue=({cat,setCat,showToast})=>{
   const [catF,setCatF]=useState("Toutes");
   const [modal,setModal]=useState(false);
   const [detail,setDetail]=useState(null);
-  const [form,setForm]=useState({nom:"",categorie:"",taille:"",tailleMin:"",tailleMax:"",prix:"",caution:""});
+  const [editRobe,setEditRobe]=useState(null);
+  const [form,setForm]=useState({nom:"",categorie:"",taille:"",tailleMin:"",tailleMax:"",prix:"",caution:"",photoUrl:null,photoFile:null});
 
   const filtered=useMemo(()=>cat.filter(r=>(catF==="Toutes"||r.categorie===catF)&&r.nom.toLowerCase().includes(q.toLowerCase())),[cat,catF,q]);
 
@@ -316,9 +317,9 @@ const Catalogue=({cat,setCat,showToast})=>{
             onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
             onTouchStart={e=>e.currentTarget.style.transform="scale(0.97)"}
             onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
-            <div style={{height:110,background:`linear-gradient(135deg,${r.shade}33,${r.shade}66)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative"}}>
-              <Avatar color={r.shade} nom={r.nom} size={44}/>
-              <div style={{position:"absolute",top:8,right:8,background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"2px 8px",fontSize:11,fontWeight:900,color:T.vert}}>{r.prix}€</div>
+            <div style={{height:110,position:"relative",overflow:"hidden",background:`linear-gradient(135deg,${r.shade}33,${r.shade}66)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {r.photo_url?<img src={r.photo_url} alt={r.nom} style={{width:"100%",height:"100%",objectFit:"cover",position:"absolute",inset:0}}/>:<Avatar color={r.shade} nom={r.nom} size={44}/>}
+              <div style={{position:"absolute",top:8,right:8,background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"2px 8px",fontSize:11,fontWeight:900,color:T.vert,zIndex:1}}>{r.prix}€</div>
             </div>
             <div style={{padding:"10px 11px 12px"}}>
               <div style={{fontWeight:800,fontSize:12,color:T.encre,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.nom}</div>
@@ -332,7 +333,7 @@ const Catalogue=({cat,setCat,showToast})=>{
       <FAB onClick={()=>setModal(true)}/>
 
       {/* Modal ajout */}
-      <Modal open={modal} onClose={()=>setModal(false)} title="Nouvelle pièce">
+      <Modal open={modal} onClose={()=>{setModal(false);setEditRobe(null);}} title={editRobe?"Modifier la pièce":"Nouvelle pièce"}>
         <Input label="Nom de la pièce" value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="ex: Karakou Yasmine"/>
         <Input label="Type de pièce" value={form.categorie} onChange={e=>setForm(p=>({...p,categorie:e.target.value}))} placeholder="ex: Karakou, Caftan, Robe de soirée..."/>
         <div style={{marginBottom:14}}>
@@ -362,16 +363,18 @@ const Catalogue=({cat,setCat,showToast})=>{
             }
           </label>
         </div>
-        <BtnPrimary onClick={add} disabled={!form.nom||!form.prix}>Ajouter au catalogue ✓</BtnPrimary>
+        <BtnPrimary onClick={add} disabled={!form.nom||!form.prix}>{editRobe?"Enregistrer les modifications ✓":"Ajouter au catalogue ✓"}</BtnPrimary>
       </Modal>
 
       {/* Modal détail */}
       <Modal open={!!detail} onClose={()=>setDetail(null)} title={detail?.nom||""}>
         {detail&&(
           <>
-            <div style={{height:140,borderRadius:16,background:`linear-gradient(135deg,${detail.shade}22,${detail.shade}55)`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16,position:"relative"}}>
-              <div style={{textAlign:"center"}}>
-                <div style={{fontSize:32,marginBottom:6}}>📷</div>
+                        <div style={{height:180,borderRadius:16,overflow:"hidden",marginBottom:14,position:"relative",background:`linear-gradient(135deg,${detail.shade}22,${detail.shade}55)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              {detail.photo_url
+                ?<img src={detail.photo_url} alt={detail.nom} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                :<div style={{textAlign:"center"}}><div style={{fontSize:32,marginBottom:6}}>📷</div><div style={{fontSize:12,fontWeight:700,color:detail.shade}}>Photo de la pièce</div></div>
+              }
                 <div style={{fontSize:12,fontWeight:700,color:detail.shade}}>Photo de la pièce</div>
               </div>
               <div style={{position:"absolute",top:10,right:10,background:T.blanc,borderRadius:10,padding:"4px 10px"}}>
@@ -389,6 +392,15 @@ const Catalogue=({cat,setCat,showToast})=>{
             <div style={{background:T.vertL,borderRadius:12,padding:"11px 14px",display:"flex",alignItems:"center",gap:10}}>
               <Check size={16} color={T.vert}/>
               <span style={{fontSize:13,fontWeight:700,color:T.vert}}>Disponible à la location</span>
+            </div>
+          
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:12}}>
+              <button onClick={()=>{setEditRobe(detail);setDetail(null);setModal(true);}} style={{padding:"11px",borderRadius:13,background:T.vertL,border:`1.5px solid ${T.vertM}`,color:T.vert,fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+                ✏️ Modifier
+              </button>
+              <button onClick={()=>deleteRobe(detail)} style={{padding:"11px",borderRadius:13,background:"#FFF0EC",border:"1.5px solid #F5C0B0",color:"#D04040",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+                🗑️ Supprimer
+              </button>
             </div>
           </>
         )}
