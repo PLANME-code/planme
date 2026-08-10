@@ -408,7 +408,7 @@ function Modal({ open, onClose, title, children }) {
             <span style={{ fontWeight:900, fontSize:17, color:T.encre }}>{title}</span>
             <button onClick={onClose} style={{ background:T.fond, border:"none", borderRadius:10, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><X size={16} color={T.gris}/></button>
           </div>
-          <div style={{ paddingBottom:40 }}>{children}</div>
+          <div style={{ paddingBottom:100 }}>{children}</div>
         </div>
       </div>
     </div>
