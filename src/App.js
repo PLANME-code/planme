@@ -201,7 +201,7 @@ function AuthScreen({ onAuth }) {
         await fetch(`${SUPABASE_URL}/rest/v1/users_approved`, {
           method:"POST",
           headers: { apikey: SUPABASE_KEY, "Content-Type":"application/json", Prefer:"return=representation" },
-          body: JSON.stringify({ email, approved:false, paid:false, note:"Inscription via app" })
+          body: JSON.stringify({ email:email.toLowerCase().trim(), approved:false, paid:false, note:"Inscription via app" })
         }).catch(()=>{}); // Ignore si déjà existant
         setSuccess("📧 Email de confirmation envoyé ! Une fois confirmé, votre demande d'accès sera examinée sous 24h.");
         setMode("login");
@@ -217,17 +217,18 @@ function AuthScreen({ onAuth }) {
       } else {
         const data = await auth.signIn(email, password);
         // Vérifier accès approuvé
-        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}&select=approved,paid,plan,prix`, {
-          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${data.access_token}` }
+        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=approved,paid,plan,prix`, {
+          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
         });
         const checkData = await checkRes.json();
-        const access = Array.isArray(checkData) && checkData[0];
+        console.log('Access check:', checkData, 'for email:', email.toLowerCase().trim());
+        const access = Array.isArray(checkData) && checkData.length > 0 && checkData[0];
         if (!access) {
           // Première demande — enregistrer
           await fetch(`${SUPABASE_URL}/rest/v1/users_approved`, {
             method:"POST",
             headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${data.access_token}`, "Content-Type":"application/json", Prefer:"return=representation" },
-            body: JSON.stringify({ email, approved:false, paid:false, note:"Demande via app" })
+            body: JSON.stringify({ email:email.toLowerCase().trim(), approved:false, paid:false, note:"Demande via app" })
           });
           await auth.signOut();
           setError("⏳ Demande enregistrée ! Vous serez contactée par email sous 24h pour valider votre accès.");
@@ -1264,10 +1265,10 @@ export default function App() {
 
   const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", stats:"Statistiques" };
 
+  const [signingOut, setSigningOut] = useState(false);
+
   if (!authChecked) return null;
   if (!user) return <AuthScreen onAuth={u => setUser(u)} />;
-
-  const [signingOut, setSigningOut] = useState(false);
   const handleSignOut = async () => {
     if (!window.confirm("Se déconnecter de Plan Me ?")) return;
     setSigningOut(true);
