@@ -435,7 +435,7 @@ function Toast({ msg, type="success", onDone }) {
       display:"flex", gap:12, alignItems:"center",
       boxShadow:`0 8px 32px rgba(0,0,0,.15), 0 0 0 1px ${col}22`,
       zIndex:999, fontFamily:"inherit", whiteSpace:"nowrap",
-      borderLeft:`3px solid ${col}`,
+
     }}>
       <div style={{ width:8, height:8, borderRadius:"50%", background:col, flexShrink:0 }}/>
       <span style={{ fontWeight:800, fontSize:13, color:T.encre }}>{msg}</span>
@@ -970,10 +970,17 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
     const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note };
     const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
-    try { await api("POST","reservations",data); } catch(e) {}
-    setReservations(p => [...p, local]);
-    toast("Réservation confirmée");
+    if (editResaId) {
+      try { await api("PATCH",`reservations?id=eq.${editResaId}`,data); } catch(e) {}
+      setReservations(p=>p.map(x=>x.id===editResaId?{...x,...local,id:editResaId}:x));
+      toast("Réservation modifiée");
+    } else {
+      try { await api("POST","reservations",data); } catch(e) {}
+      setReservations(p => [...p, local]);
+      toast("Réservation confirmée");
+    }
     setModal(false);
+    setEditResaId(null);
     setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"" });
   };
 
@@ -1049,10 +1056,11 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 {new Date(detail.r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})} → {new Date(detail.r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}
               </div>
             </div>
-            <div style={{ background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:14, padding:"11px 14px", marginBottom:12 }}>
-              <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:10 }}>Montants</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:10 }}>
-                {[["Prix",`${detail.r.prix}€`,T.vert],["Caution",`${detail.r.caution}€`,T.encre],["Acompte",`${detail.r.acompte}€`,T.gris]].map(([l,v,col]) => (
+            {/* Prix location */}
+            <div style={{ background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:14, padding:"11px 14px", marginBottom:10 }}>
+              <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:10 }}>Prix location</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+                {[["Prix",`${detail.r.prix}€`,T.vert],["Acompte versé",`${detail.r.acompte}€`,T.gris]].map(([l,v,col]) => (
                   <div key={l} style={{ background:T.fond, borderRadius:10, padding:8, textAlign:"center" }}>
                     <div style={{ fontSize:9, fontWeight:800, color:T.gris, textTransform:"uppercase", letterSpacing:".1em", marginBottom:4 }}>{l}</div>
                     <div style={{ fontWeight:900, fontSize:16, color:col }}>{v}</div>
@@ -1064,7 +1072,35 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 <span style={{ fontWeight:900, fontSize:18, color:detail.r.statut==="terminee"?T.vert:detail.reste>0?T.rose:T.vert }}>{detail.r.statut==="terminee"?"0€":`${detail.reste}€`}</span>
               </div>
             </div>
-            {detail.r.note && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:14, padding:"10px 14px", fontSize:12, color:T.rose, fontWeight:600, fontStyle:"italic" }}>{detail.r.note}</div>}
+            {/* Caution séparée */}
+            <div style={{ background:T.vertL, border:`1.5px solid ${T.vertM}`, borderRadius:14, padding:"11px 14px", marginBottom:10 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase" }}>Caution</div>
+                <span style={{ fontWeight:900, fontSize:16, color:T.encre }}>{detail.r.caution}€</span>
+              </div>
+              <div style={{ fontSize:11, color:T.gris, fontWeight:600 }}>Chèque caution — séparé du prix · à rendre à la fin</div>
+            </div>
+            {detail.r.note && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:14, padding:"10px 14px", marginBottom:10, fontSize:12, color:T.rose, fontWeight:600, fontStyle:"italic" }}>{detail.r.note}</div>}
+            {/* Boutons modifier / supprimer */}
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
+              <button onClick={()=>{
+                setDetail(null);
+                setModal(true);
+                setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:detail.r.note||"", prixExc:"" });
+                setEditResaId(detail.r.id);
+              }} style={{ padding:"11px", borderRadius:13, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+                ✏️ Modifier
+              </button>
+              <button onClick={async()=>{
+                if(!window.confirm(`Supprimer cette réservation ?`)) return;
+                try{await api("DELETE",`reservations?id=eq.${detail.r.id}`,null);}catch(e){}
+                setReservations(p=>p.filter(x=>x.id!==detail.r.id));
+                setDetail(null);
+                toast("Réservation supprimée");
+              }} style={{ padding:"11px", borderRadius:13, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+                🗑️ Supprimer
+              </button>
+            </div>
           </>
         )}
       </Modal>
