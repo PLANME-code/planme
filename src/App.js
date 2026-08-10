@@ -146,83 +146,167 @@ const SHADES = ["#3A7D57","#5BA37A","#D4A0C0","#A87098","#6AAB85","#C8A0D0","#4A
 const TODAY = new Date().toISOString().slice(0,10);
 
 // ── AUTH SCREEN ─────────────────────────────────────────────
+function PasswordStrength({ password }) {
+  const checks = [
+    { label:"8 caractères minimum", ok: password.length >= 8 },
+    { label:"Une majuscule", ok: /[A-Z]/.test(password) },
+    { label:"Un chiffre", ok: /[0-9]/.test(password) },
+    { label:"Un caractère spécial", ok: /[^A-Za-z0-9]/.test(password) },
+  ];
+  const score = checks.filter(c=>c.ok).length;
+  const colors = ["#E05050","#E08030","#D4A020","#3A7D57"];
+  const labels = ["Trop faible","Faible","Moyen","Fort"];
+  if (!password) return null;
+  return (
+    <div style={{ marginBottom:12 }}>
+      <div style={{ display:"flex", gap:4, marginBottom:6 }}>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{ flex:1, height:4, borderRadius:100, background:i<score?colors[score-1]:"#E8E8E8", transition:"background .3s" }}/>
+        ))}
+      </div>
+      <div style={{ fontSize:11, fontWeight:700, color:colors[score-1]||T.gris }}>{labels[score-1]||"Trop faible"}</div>
+      <div style={{ marginTop:6, display:"flex", flexWrap:"wrap", gap:4 }}>
+        {checks.map(ch => (
+          <span key={ch.label} style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:100, background:ch.ok?T.vertL:"#F5F5F5", color:ch.ok?T.vert:"#999" }}>
+            {ch.ok?"✓":"·"} {ch.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AuthScreen({ onAuth }) {
-  const [mode, setMode] = useState("login"); // login | signup
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [exiting, setExiting] = useState(false);
+
+  const pwStrong = password.length>=8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 
   const submit = async () => {
     if (!email || !password) return;
+    if (mode==="signup" && !pwStrong) { setError("Mot de passe trop faible — respecte les critères ci-dessous."); return; }
     setLoading(true);
     setError("");
+    setSuccess("");
     try {
       if (mode === "signup") {
         await auth.signUp(email, password);
-        setError("✅ Compte créé ! Vérifie tes emails puis connecte-toi.");
+        setSuccess("📧 Email de confirmation envoyé ! Vérifie ta boîte mail puis connecte-toi.");
+        setMode("login");
+        setPassword("");
+      } else if (mode === "forgot") {
+        const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+          method:"POST",
+          headers:{ apikey:SUPABASE_KEY, "Content-Type":"application/json" },
+          body: JSON.stringify({ email })
+        });
+        setSuccess("📧 Email de réinitialisation envoyé ! Vérifie ta boîte mail.");
         setMode("login");
       } else {
         const data = await auth.signIn(email, password);
-        onAuth({ email, userId: data.user?.id });
+        // Animation de sortie
+        setLoading(false);
+        setSuccess("✅ Connexion réussie !");
+        setTimeout(() => {
+          setExiting(true);
+          setTimeout(() => onAuth({ email, userId: data.user?.id }), 500);
+        }, 600);
+        return;
       }
     } catch(e) {
-      setError(e.message || "Une erreur est survenue");
+      setError(e.message==="Invalid login credentials"?"Email ou mot de passe incorrect.":e.message||"Une erreur est survenue.");
     }
     setLoading(false);
   };
 
+  const inp = { width:"100%", background:T.fond, border:`1.5px solid ${T.vertM}`, borderRadius:12, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+
   return (
-    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg,${T.vert3||"#1A3D28"},${T.vert2})`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg,#1A3D28,${T.vert2})`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit", opacity:exiting?0:1, transition:"opacity .5s ease" }}>
       {/* Logo */}
-      <div style={{ marginBottom:36, textAlign:"center" }}>
-        <div style={{ fontWeight:900, fontSize:48, color:"#fff", letterSpacing:-2, lineHeight:1 }}>
-          Plan<span style={{ color:"rgba(255,255,255,.45)" }}>me</span>
+      <div style={{ marginBottom:32, textAlign:"center", animation:"fadeUp .6s ease both" }}>
+        <div style={{ fontWeight:900, fontSize:52, color:"#fff", letterSpacing:-2, lineHeight:1 }}>
+          Plan<span style={{ color:"rgba(255,255,255,.4)" }}>me</span>
           <span style={{ display:"inline-block", width:10, height:10, borderRadius:"50%", background:T.rose, marginLeft:4, marginBottom:8 }}/>
         </div>
-        <div style={{ fontSize:14, color:"rgba(255,255,255,.55)", fontWeight:600, marginTop:8 }}>Gestion locations · 100% mobile</div>
+        <div style={{ fontSize:13, color:"rgba(255,255,255,.5)", fontWeight:600, marginTop:8, letterSpacing:".05em" }}>Gestion locations · 100% mobile</div>
       </div>
 
       {/* Card */}
-      <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,.95)", borderRadius:24, padding:"28px 24px", boxShadow:"0 24px 60px rgba(0,0,0,.25)" }}>
+      <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,.96)", borderRadius:24, padding:"26px 22px", boxShadow:"0 24px 60px rgba(0,0,0,.3)", animation:"popIn .5s cubic-bezier(.22,1,.36,1) .1s both" }}>
+        
         {/* Tabs */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, background:T.fond, borderRadius:14, padding:4, marginBottom:24 }}>
-          {[["login","Se connecter"],["signup","Créer un compte"]].map(([m,l]) => (
-            <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ padding:"10px", borderRadius:11, border:"none", background:mode===m?T.blanc:"transparent", color:mode===m?T.encre:T.gris, fontWeight:mode===m?800:600, fontSize:13, cursor:"pointer", fontFamily:"inherit", boxShadow:mode===m?"0 2px 8px rgba(0,0,0,.08)":"none", transition:"all .2s" }}>
-              {l}
-            </button>
-          ))}
-        </div>
+        {mode !== "forgot" && (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, background:T.fond, borderRadius:14, padding:4, marginBottom:22 }}>
+            {[["login","Se connecter"],["signup","Créer un compte"]].map(([m,l]) => (
+              <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }} style={{ padding:"9px", borderRadius:11, border:"none", background:mode===m?T.blanc:"transparent", color:mode===m?T.encre:T.gris, fontWeight:mode===m?800:600, fontSize:13, cursor:"pointer", fontFamily:"inherit", boxShadow:mode===m?"0 2px 8px rgba(0,0,0,.08)":"none", transition:"all .2s" }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
 
-        <div style={{ marginBottom:14 }}>
+        {mode === "forgot" && (
+          <div style={{ marginBottom:18 }}>
+            <button onClick={()=>{setMode("login");setError("");setSuccess("");}} style={{ background:"none", border:"none", color:T.vert, fontWeight:800, cursor:"pointer", fontFamily:"inherit", fontSize:13, display:"flex", alignItems:"center", gap:6 }}>← Retour</button>
+            <div style={{ fontWeight:900, fontSize:17, color:T.encre, marginTop:10 }}>Mot de passe oublié</div>
+            <div style={{ fontSize:12, color:T.gris, marginTop:4 }}>On t'envoie un lien de réinitialisation.</div>
+          </div>
+        )}
+
+        {/* Email */}
+        <div style={{ marginBottom:12 }}>
           <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Email</div>
-          <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ton@email.com" style={{ width:"100%", background:T.fond, border:`1.5px solid ${T.vertM}`, borderRadius:12, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" }}/>
-        </div>
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Mot de passe</div>
-          <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&submit()} style={{ width:"100%", background:T.fond, border:`1.5px solid ${T.vertM}`, borderRadius:12, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" }}/>
+          <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ton@email.com" style={inp}/>
         </div>
 
-        {error && (
-          <div style={{ background:error.startsWith("✅")?T.vertL:T.roseL, border:`1.5px solid ${error.startsWith("✅")?T.vertM:T.rose}44`, borderRadius:12, padding:"10px 14px", marginBottom:16, fontSize:12, fontWeight:700, color:error.startsWith("✅")?T.vert:T.rose }}>
-            {error}
+        {/* Mot de passe */}
+        {mode !== "forgot" && (
+          <div style={{ marginBottom:mode==="signup"?8:16 }}>
+            <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Mot de passe</div>
+            <div style={{ position:"relative" }}>
+              <input value={password} onChange={e=>setPassword(e.target.value)} type={showPass?"text":"password"} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&submit()} style={{ ...inp, paddingRight:46 }}/>
+              <button onClick={()=>setShowPass(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16, color:T.gris }}>
+                {showPass?"🙈":"👁️"}
+              </button>
+            </div>
           </div>
         )}
 
-        <button onClick={submit} disabled={loading||!email||!password} style={{ width:"100%", background:loading||!email||!password?T.gris:`linear-gradient(135deg,${T.vert},${T.vert2})`, color:"#fff", border:"none", borderRadius:14, padding:"14px", fontWeight:900, fontSize:15, cursor:loading||!email||!password?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:loading?"none":`0 4px 16px ${T.vert}44` }}>
-          {loading ? "Chargement..." : mode==="login" ? "Se connecter →" : "Créer mon compte →"}
-        </button>
+        {/* Force du mot de passe */}
+        {mode==="signup" && <PasswordStrength password={password}/>}
 
+        {/* Mot de passe oublié */}
         {mode==="login" && (
-          <div style={{ textAlign:"center", marginTop:16, fontSize:12, color:T.gris, fontWeight:600 }}>
-            Première fois ? <button onClick={() => setMode("signup")} style={{ background:"none", border:"none", color:T.vert, fontWeight:800, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>Créer un compte</button>
+          <div style={{ textAlign:"right", marginBottom:16, marginTop:-8 }}>
+            <button onClick={()=>{setMode("forgot");setError("");setSuccess("");}} style={{ background:"none", border:"none", color:T.vert, fontWeight:700, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>
+              Mot de passe oublié ?
+            </button>
           </div>
         )}
+
+        {/* Messages */}
+        {error && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:12, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>}
+        {success && <div style={{ background:T.vertL, border:`1.5px solid ${T.vertM}`, borderRadius:12, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.vert }}>{success}</div>}
+
+        {/* Bouton */}
+        <button onClick={submit} disabled={loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)} style={{ width:"100%", background:loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)?T.gris:`linear-gradient(135deg,${T.vert},${T.vert2})`, color:"#fff", border:"none", borderRadius:14, padding:"14px", fontWeight:900, fontSize:15, cursor:"pointer", fontFamily:"inherit", boxShadow:`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+          {loading && <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid rgba(255,255,255,.3)", borderTop:"2.5px solid #fff", borderRadius:"50%", animation:"spin .7s linear infinite" }}/>}
+          {loading ? "Connexion en cours..." : mode==="login" ? "Se connecter →" : mode==="signup" ? "Créer mon compte →" : "Envoyer le lien →"}
+        </button>
       </div>
 
-      <div style={{ marginTop:24, fontSize:11, color:"rgba(255,255,255,.35)", fontWeight:600, textAlign:"center" }}>
+      <div style={{ marginTop:20, fontSize:11, color:"rgba(255,255,255,.3)", fontWeight:600, textAlign:"center" }}>
         Plan Me · Données sécurisées · Sans engagement
       </div>
+
+      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
     </div>
   );
 }
@@ -1040,15 +1124,27 @@ export default function App() {
   if (!authChecked) return null;
   if (!user) return <AuthScreen onAuth={u => setUser(u)} />;
 
+  const [signingOut, setSigningOut] = useState(false);
   const handleSignOut = async () => {
-    await auth.signOut();
-    setUser(null);
-    setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
+    if (!window.confirm("Se déconnecter de Plan Me ?")) return;
+    setSigningOut(true);
+    setTimeout(async () => {
+      await auth.signOut();
+      setUser(null);
+      setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
+      setSigningOut(false);
+    }, 600);
   };
 
   return (
     <div style={{ fontFamily:"'Nunito',sans-serif", background:T.fond, minHeight:"100vh", maxWidth:430, margin:"0 auto", position:"relative", paddingBottom:80 }}>
       <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+      {signingOut && (
+        <div style={{ position:"fixed", inset:0, background:`linear-gradient(160deg,#1A3D28,${T.vert2})`, zIndex:9999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", animation:"fadeIn .4s ease both" }}>
+          <div style={{ fontWeight:900, fontSize:42, color:"#fff", letterSpacing:-2, marginBottom:12 }}>Plan<span style={{ color:"rgba(255,255,255,.4)" }}>me</span></div>
+          <div style={{ fontSize:13, color:"rgba(255,255,255,.5)", fontWeight:600 }}>À bientôt ! 👋</div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ background:T.blanc, padding:"13px 18px 11px", position:"sticky", top:0, zIndex:100, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.vertM}55`, boxShadow:"0 2px 12px rgba(30,74,48,.06)" }}>
