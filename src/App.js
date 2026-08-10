@@ -23,6 +23,66 @@ const api = async (method, path, body) => {
   return text ? JSON.parse(text) : null;
 };
 
+// ── STYLES GLOBAUX ──────────────────────────────────────────
+const injectStyles = () => {
+  if (document.getElementById('planme-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'planme-styles';
+  s.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+    * { -webkit-tap-highlight-color: transparent; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes popIn { from { opacity:0; transform:scale(.88); } to { opacity:1; transform:scale(1); } }
+    @keyframes slideInRight { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:none; } }
+    @keyframes slideInLeft { from { opacity:0; transform:translateX(-24px); } to { opacity:1; transform:none; } }
+    @keyframes toastIn { from { opacity:0; transform:translateX(-50%) translateY(16px) scale(.95); } to { opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }
+    @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(58,125,87,.4); } 60% { box-shadow:0 0 0 10px rgba(58,125,87,0); } }
+    @keyframes bounce { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
+    @keyframes shimmer { 0% { background-position:-400px 0; } 100% { background-position:400px 0; } }
+    .card-anim { animation: fadeUp .4s cubic-bezier(.22,1,.36,1) both; }
+    .tap-card { transition: transform .12s cubic-bezier(.32,1.2,.55,1), box-shadow .12s; cursor:pointer; }
+    .tap-card:active { transform: scale(0.965) !important; box-shadow: 0 1px 4px rgba(58,125,87,.06) !important; }
+    .tab-content { animation: fadeIn .3s ease both; }
+    .onboarding-bubble { animation: popIn .4s cubic-bezier(.22,1,.36,1) both; }
+  `;
+  document.head.appendChild(s);
+};
+
+// ── ONBOARDING DATA ──────────────────────────────────────────
+const ONBOARDING = {
+  catalogue: {
+    emoji: "📦",
+    title: "Ton catalogue de pièces",
+    desc: "Ajoute toutes tes robes, karakou, caftan... avec photo, taille, prix et caution. Appuie sur + pour commencer !",
+    color: "#3A7D57",
+  },
+  essayages: {
+    emoji: "✨",
+    title: "Calendrier des essayages",
+    desc: "Planifie les essayages séparément de tes locations. Sélectionne un jour dans le calendrier et appuie sur + pour ajouter.",
+    color: "#5BA37A",
+  },
+  planning: {
+    emoji: "📅",
+    title: "Planning des réservations",
+    desc: "Visualise tes locations confirmées sur le calendrier. Les jours occupés sont indiqués — plus jamais de double réservation !",
+    color: "#3A7D57",
+  },
+  resa: {
+    emoji: "✓",
+    title: "Tes réservations",
+    desc: "Enregistre chaque location avec le détail client, pièce choisie, acompte et dates. Un acompte est obligatoire pour valider.",
+    color: "#D4A0C0",
+  },
+  stats: {
+    emoji: "📊",
+    title: "Tes statistiques",
+    desc: "Suis ton chiffre d'affaires, panier moyen et top pièces. Tape sur une barre du graphique pour voir le détail du mois !",
+    color: "#3A7D57",
+  },
+};
+
 const T = {
   vert: "#3A7D57", vert2: "#2E6347", vertL: "#EDF7F1", vertM: "#C8DEC8",
   rose: "#D4A0C0", roseL: "#F5ECF3",
@@ -32,6 +92,37 @@ const T = {
 const SHADES = ["#3A7D57","#5BA37A","#D4A0C0","#A87098","#6AAB85","#C8A0D0","#4A9068","#7B5EA7"];
 
 const TODAY = new Date().toISOString().slice(0,10);
+
+function OnboardingBubble({ tab, onDismiss }) {
+  const info = ONBOARDING[tab];
+  if (!info) return null;
+  return (
+    <div className="onboarding-bubble" style={{
+      margin:"0 16px 16px",
+      background:`linear-gradient(135deg,${info.color}18,${info.color}08)`,
+      border:`1.5px solid ${info.color}44`,
+      borderRadius:18,
+      padding:"16px 18px",
+      position:"relative",
+    }}>
+      <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
+        <div style={{ fontSize:28, flexShrink:0, animation:"bounce 2s ease infinite" }}>{info.emoji}</div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontWeight:900, fontSize:15, color:info.color, marginBottom:5 }}>{info.title}</div>
+          <div style={{ fontSize:13, color:T.encre, lineHeight:1.5, fontWeight:600 }}>{info.desc}</div>
+        </div>
+        <button onClick={onDismiss} style={{ background:"rgba(0,0,0,.06)", border:"none", borderRadius:8, width:26, height:26, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <X size={13} color={T.gris}/>
+        </button>
+      </div>
+      <div style={{ marginTop:12, display:"flex", justifyContent:"flex-end" }}>
+        <button onClick={onDismiss} style={{ background:info.color, color:"#fff", border:"none", borderRadius:10, padding:"7px 16px", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+          J'ai compris ✓
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function Toast({ msg, onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
@@ -742,6 +833,18 @@ export default function App() {
 
   const showToast = msg => setToast({ msg, key:Date.now() });
 
+  useEffect(() => { injectStyles(); }, []);
+
+  // Onboarding — voir quels onglets ont déjà été vus
+  const [seenTabs, setSeenTabs] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('planme_seen_tabs') || '{}'); } catch(e) { return {}; }
+  });
+  const dismissOnboarding = (tab) => {
+    const updated = { ...seenTabs, [tab]: true };
+    setSeenTabs(updated);
+    try { localStorage.setItem('planme_seen_tabs', JSON.stringify(updated)); } catch(e) {}
+  };
+
   useEffect(() => {
     Promise.all([
       api("GET","robes?select=*&order=created_at"),
@@ -794,12 +897,27 @@ export default function App() {
       )}
 
       {!loading && (
-        <div style={{ paddingTop:16 }}>
-          {tab==="catalogue" && <Catalogue robes={robes} setRobes={setRobes} toast={showToast}/>}
-          {tab==="essayages" && <Essayages essayages={essayages} setEssayages={setEssayages} robes={robes} clientes={clientes} setClientes={setClientes} toast={showToast}/>}
-          {tab==="planning" && <Planning reservations={reservations} robes={robes} clientes={clientes}/>}
-          {tab==="resa" && <Reservations reservations={reservations} setReservations={setReservations} robes={robes} clientes={clientes} setClientes={setClientes} toast={showToast}/>}
-          {tab==="stats" && <Stats reservations={reservations} robes={robes}/>}
+        <div className="tab-content" key={tab} style={{ paddingTop:16 }}>
+          {tab==="catalogue" && <>
+            {!seenTabs.catalogue && <OnboardingBubble tab="catalogue" onDismiss={()=>dismissOnboarding("catalogue")}/>}
+            <Catalogue robes={robes} setRobes={setRobes} toast={showToast}/>
+          </>}
+          {tab==="essayages" && <>
+            {!seenTabs.essayages && <OnboardingBubble tab="essayages" onDismiss={()=>dismissOnboarding("essayages")}/>}
+            <Essayages essayages={essayages} setEssayages={setEssayages} robes={robes} clientes={clientes} setClientes={setClientes} toast={showToast}/>
+          </>}
+          {tab==="planning" && <>
+            {!seenTabs.planning && <OnboardingBubble tab="planning" onDismiss={()=>dismissOnboarding("planning")}/>}
+            <Planning reservations={reservations} robes={robes} clientes={clientes}/>
+          </>}
+          {tab==="resa" && <>
+            {!seenTabs.resa && <OnboardingBubble tab="resa" onDismiss={()=>dismissOnboarding("resa")}/>}
+            <Reservations reservations={reservations} setReservations={setReservations} robes={robes} clientes={clientes} setClientes={setClientes} toast={showToast}/>
+          </>}
+          {tab==="stats" && <>
+            {!seenTabs.stats && <OnboardingBubble tab="stats" onDismiss={()=>dismissOnboarding("stats")}/>}
+            <Stats reservations={reservations} robes={robes}/>
+          </>}
         </div>
       )}
 
