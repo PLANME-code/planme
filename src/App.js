@@ -8,7 +8,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 let _token = SUPABASE_KEY;
 let _userId = null;
 
-const api = async (method, path, body) => {
+const api = async (method, path, body, retry=true) => {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method,
     headers: {
@@ -19,6 +19,11 @@ const api = async (method, path, body) => {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401 && retry) {
+    const refreshed = await auth.refresh();
+    if (refreshed) return api(method, path, body, false);
+    throw new Error("Session expirée — reconnecte-toi");
+  }
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err);
@@ -49,8 +54,30 @@ const auth = {
     if (data.error) throw new Error(data.error.message || data.msg);
     _token = data.access_token;
     _userId = data.user?.id;
-    try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, userId:data.user?.id, email })); } catch(e) {}
+    try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId:data.user?.id, email })); } catch(e) {}
     return data;
+  },
+  async refresh() {
+    try {
+      const s = localStorage.getItem('planme_session');
+      if (!s) return false;
+      const { refreshToken } = JSON.parse(s);
+      if (!refreshToken) return false;
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      const data = await res.json();
+      if (data.access_token) {
+        _token = data.access_token;
+        _userId = data.user?.id;
+        const { email } = JSON.parse(s);
+        try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId:data.user?.id, email })); } catch(e) {}
+        return true;
+      }
+    } catch(e) {}
+    return false;
   },
   async signOut() {
     await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
@@ -460,11 +487,12 @@ function Catalogue({ robes, setRobes, toast }) {
 
       let photo_url = form.photoPreview && !form.photoFile ? form.photoPreview : null;
       if (form.photoFile) {
+        await auth.refresh().catch(()=>{});
         const ext = form.photoFile.name.split('.').pop();
         const fname = `robe_${Date.now()}.${ext}`;
         const up = await fetch(`${SUPABASE_URL}/storage/v1/object/photos-robes/${fname}`, {
           method:"POST",
-          headers: { apikey:SUPABASE_KEY, Authorization:`Bearer ${_token}`, "Content-Type":form.photoFile.type, "x-upsert":"true" },
+          headers: { apikey:SUPABASE_KEY, Authorization:`Bearer ${_token}`, "Content-Type":form.photoFile.type, "x-upsert":"true", "cache-control":"3600" },
           body: form.photoFile
         });
         if (up.ok) {
