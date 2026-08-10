@@ -197,7 +197,13 @@ function AuthScreen({ onAuth }) {
     try {
       if (mode === "signup") {
         await auth.signUp(email, password);
-        setSuccess("📧 Email de confirmation envoyé ! Vérifie ta boîte mail puis connecte-toi.");
+        // Enregistrer la demande d'accès
+        await fetch(`${SUPABASE_URL}/rest/v1/users_approved`, {
+          method:"POST",
+          headers: { apikey: SUPABASE_KEY, "Content-Type":"application/json", Prefer:"return=representation" },
+          body: JSON.stringify({ email, approved:false, paid:false, note:"Inscription via app" })
+        }).catch(()=>{}); // Ignore si déjà existant
+        setSuccess("📧 Email de confirmation envoyé ! Une fois confirmé, votre demande d'accès sera examinée sous 24h.");
         setMode("login");
         setPassword("");
       } else if (mode === "forgot") {
@@ -210,12 +216,42 @@ function AuthScreen({ onAuth }) {
         setMode("login");
       } else {
         const data = await auth.signIn(email, password);
-        // Animation de sortie
+        // Vérifier accès approuvé
+        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}&select=approved,paid,plan,prix`, {
+          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${data.access_token}` }
+        });
+        const checkData = await checkRes.json();
+        const access = Array.isArray(checkData) && checkData[0];
+        if (!access) {
+          // Première demande — enregistrer
+          await fetch(`${SUPABASE_URL}/rest/v1/users_approved`, {
+            method:"POST",
+            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${data.access_token}`, "Content-Type":"application/json", Prefer:"return=representation" },
+            body: JSON.stringify({ email, approved:false, paid:false, note:"Demande via app" })
+          });
+          await auth.signOut();
+          setError("⏳ Demande enregistrée ! Vous serez contactée par email sous 24h pour valider votre accès.");
+          setLoading(false);
+          return;
+        }
+        if (!access.approved) {
+          await auth.signOut();
+          setError("⏳ Votre demande est en cours de validation. Vous serez contactée sous 24h.");
+          setLoading(false);
+          return;
+        }
+        if (!access.paid && access.plan !== 'admin' && access.plan !== 'fondateur') {
+          await auth.signOut();
+          setError("💳 Votre accès a été validé ! Vérifiez votre email pour finaliser le paiement.");
+          setLoading(false);
+          return;
+        }
+        // Accès OK
         setLoading(false);
         setSuccess("✅ Connexion réussie !");
         setTimeout(() => {
           setExiting(true);
-          setTimeout(() => onAuth({ email, userId: data.user?.id }), 500);
+          setTimeout(() => onAuth({ email, userId: data.user?.id, plan: access.plan }), 500);
         }, 600);
         return;
       }
@@ -1039,6 +1075,113 @@ function Stats({ reservations, robes }) {
   );
 }
 
+// ── ADMIN PANEL ──────────────────────────────────────────────
+function AdminPanel() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${SUPABASE_URL}/rest/v1/users_approved?select=*&order=created_at.desc`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}` }
+    }).then(r=>r.json()).then(data => {
+      if (Array.isArray(data)) setUsers(data);
+    }).finally(()=>setLoading(false));
+  },[]);
+
+  const approve = async (email) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
+      method:"PATCH",
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}`, "Content-Type":"application/json" },
+      body: JSON.stringify({ approved:true, approved_at: new Date().toISOString() })
+    });
+    setUsers(p => p.map(u => u.email===email ? {...u, approved:true} : u));
+  };
+
+  const setPaid = async (email, plan, prix) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
+      method:"PATCH",
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}`, "Content-Type":"application/json" },
+      body: JSON.stringify({ paid:true, plan, prix, paid_at: new Date().toISOString() })
+    });
+    setUsers(p => p.map(u => u.email===email ? {...u, paid:true, plan, prix} : u));
+  };
+
+  const revoke = async (email) => {
+    if (!window.confirm(`Révoquer l'accès de ${email} ?`)) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
+      method:"PATCH",
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}`, "Content-Type":"application/json" },
+      body: JSON.stringify({ approved:false, paid:false })
+    });
+    setUsers(p => p.map(u => u.email===email ? {...u, approved:false, paid:false} : u));
+  };
+
+  const pending = users.filter(u => !u.approved);
+  const active = users.filter(u => u.approved);
+
+  return (
+    <div style={{ padding:"0 16px" }}>
+      <div style={{ fontWeight:900, fontSize:18, color:T.encre, marginBottom:4 }}>⚙️ Administration</div>
+      <div style={{ fontSize:12, color:T.gris, marginBottom:16 }}>{users.length} comptes · {pending.length} en attente</div>
+
+      {pending.length > 0 && (
+        <>
+          <div style={{ fontWeight:800, fontSize:13, color:T.rose, marginBottom:10 }}>⏳ En attente de validation ({pending.length})</div>
+          {pending.map(u => (
+            <div key={u.email} style={{ background:T.blanc, borderRadius:16, border:`1.5px solid ${T.rose}44`, padding:"12px 14px", marginBottom:10, boxShadow:"0 2px 10px rgba(58,125,87,.06)" }}>
+              <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:4 }}>{u.email}</div>
+              <div style={{ fontSize:11, color:T.gris, marginBottom:10 }}>Demande le {new Date(u.created_at).toLocaleDateString("fr-FR")} · {u.note}</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                <button onClick={()=>approve(u.email)} style={{ padding:"9px", borderRadius:11, background:`linear-gradient(135deg,${T.vert},${T.vert2})`, color:"#fff", border:"none", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  ✅ Approuver
+                </button>
+                <button onClick={()=>revoke(u.email)} style={{ padding:"9px", borderRadius:11, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  ❌ Refuser
+                </button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      <div style={{ fontWeight:800, fontSize:13, color:T.vert, marginBottom:10, marginTop:pending.length>0?16:0 }}>✅ Comptes actifs ({active.length})</div>
+      {active.map(u => (
+        <div key={u.email} style={{ background:T.blanc, borderRadius:16, border:`1.5px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10 }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
+            <div style={{ fontWeight:800, fontSize:13, color:T.encre }}>{u.email}</div>
+            <div style={{ display:"flex", gap:6 }}>
+              <span style={{ background:u.paid?T.vertL:T.roseL, color:u.paid?T.vert:T.rose, fontSize:10, fontWeight:800, padding:"3px 8px", borderRadius:100 }}>
+                {u.paid?"✓ Payé":"Non payé"}
+              </span>
+              <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"3px 8px", borderRadius:100 }}>
+                {u.plan} {u.prix>0?`${u.prix}€`:""}
+              </span>
+            </div>
+          </div>
+          <div style={{ fontSize:11, color:T.gris, marginBottom:8 }}>{u.note}</div>
+          {!u.paid && u.plan!=="admin" && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+              <button onClick={()=>setPaid(u.email,"fondateur",79)} style={{ padding:"8px", borderRadius:10, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                💚 Fondateur 79€
+              </button>
+              <button onClick={()=>setPaid(u.email,"standard",99)} style={{ padding:"8px", borderRadius:10, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                ✓ Standard 99€
+              </button>
+            </div>
+          )}
+          {u.plan !== "admin" && (
+            <button onClick={()=>revoke(u.email)} style={{ width:"100%", padding:"8px", borderRadius:10, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+              🚫 Révoquer l'accès
+            </button>
+          )}
+        </div>
+      ))}
+
+      {loading && <div style={{ textAlign:"center", color:T.gris, padding:20 }}>Chargement...</div>}
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("catalogue");
@@ -1157,6 +1300,11 @@ export default function App() {
           <div style={{ background:T.vertL, borderRadius:10, padding:"5px 12px" }}>
             <span style={{ fontSize:12, fontWeight:800, color:T.vert }}>{titles[tab]}</span>
           </div>
+          {user?.email==="nafissa.tizaoui@hotmail.com" && (
+            <button onClick={()=>setTab("admin")} title="Admin" style={{ width:36, height:36, borderRadius:12, background:tab==="admin"?T.vert:T.vertL, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>
+              ⚙️
+            </button>
+          )}
           <button onClick={handleSignOut} title="Se déconnecter" style={{ width:36, height:36, borderRadius:12, background:T.vertL, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>
             🚪
           </button>
@@ -1191,6 +1339,7 @@ export default function App() {
             {!seenTabs.stats && <OnboardingBubble tab="stats" onDismiss={()=>dismissOnboarding("stats")}/>}
             <Stats reservations={reservations} robes={robes}/>
           </>}
+          {tab==="admin" && <AdminPanel/>}
         </div>
       )}
 
