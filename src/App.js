@@ -4,12 +4,16 @@ import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, Chevron
 const SUPABASE_URL = "https://drgiyafkcmfydkabctxa.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2l5YWZrY21meWRrYWJjdHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNTA5MDAsImV4cCI6MjEwMTkyNjkwMH0.Ak3tEWz5PL9DRhGKOswtqujW7dHM3-x79hd8ItteIQo";
 
+// Token session courant
+let _token = SUPABASE_KEY;
+let _userId = null;
+
 const api = async (method, path, body) => {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method,
     headers: {
       apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Authorization: `Bearer ${_token}`,
       "Content-Type": "application/json",
       Prefer: "return=representation",
     },
@@ -21,6 +25,54 @@ const api = async (method, path, body) => {
   }
   const text = await res.text();
   return text ? JSON.parse(text) : null;
+};
+
+// Auth functions
+const auth = {
+  async signUp(email, password) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || data.msg);
+    return data;
+  },
+  async signIn(email, password) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || data.msg);
+    _token = data.access_token;
+    _userId = data.user?.id;
+    try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, userId:data.user?.id, email })); } catch(e) {}
+    return data;
+  },
+  async signOut() {
+    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      method: "POST",
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}` },
+    });
+    _token = SUPABASE_KEY;
+    _userId = null;
+    try { localStorage.removeItem('planme_session'); } catch(e) {}
+  },
+  getSession() {
+    try {
+      const s = localStorage.getItem('planme_session');
+      if (s) {
+        const { token, userId, email } = JSON.parse(s);
+        _token = token;
+        _userId = userId;
+        return { token, userId, email };
+      }
+    } catch(e) {}
+    return null;
+  }
 };
 
 // ── STYLES GLOBAUX ──────────────────────────────────────────
@@ -92,6 +144,88 @@ const T = {
 const SHADES = ["#3A7D57","#5BA37A","#D4A0C0","#A87098","#6AAB85","#C8A0D0","#4A9068","#7B5EA7"];
 
 const TODAY = new Date().toISOString().slice(0,10);
+
+// ── AUTH SCREEN ─────────────────────────────────────────────
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState("login"); // login | signup
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    if (!email || !password) return;
+    setLoading(true);
+    setError("");
+    try {
+      if (mode === "signup") {
+        await auth.signUp(email, password);
+        setError("✅ Compte créé ! Vérifie tes emails puis connecte-toi.");
+        setMode("login");
+      } else {
+        const data = await auth.signIn(email, password);
+        onAuth({ email, userId: data.user?.id });
+      }
+    } catch(e) {
+      setError(e.message || "Une erreur est survenue");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:`linear-gradient(160deg,${T.vert3||"#1A3D28"},${T.vert2})`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+      {/* Logo */}
+      <div style={{ marginBottom:36, textAlign:"center" }}>
+        <div style={{ fontWeight:900, fontSize:48, color:"#fff", letterSpacing:-2, lineHeight:1 }}>
+          Plan<span style={{ color:"rgba(255,255,255,.45)" }}>me</span>
+          <span style={{ display:"inline-block", width:10, height:10, borderRadius:"50%", background:T.rose, marginLeft:4, marginBottom:8 }}/>
+        </div>
+        <div style={{ fontSize:14, color:"rgba(255,255,255,.55)", fontWeight:600, marginTop:8 }}>Gestion locations · 100% mobile</div>
+      </div>
+
+      {/* Card */}
+      <div style={{ width:"100%", maxWidth:380, background:"rgba(255,255,255,.95)", borderRadius:24, padding:"28px 24px", boxShadow:"0 24px 60px rgba(0,0,0,.25)" }}>
+        {/* Tabs */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, background:T.fond, borderRadius:14, padding:4, marginBottom:24 }}>
+          {[["login","Se connecter"],["signup","Créer un compte"]].map(([m,l]) => (
+            <button key={m} onClick={() => { setMode(m); setError(""); }} style={{ padding:"10px", borderRadius:11, border:"none", background:mode===m?T.blanc:"transparent", color:mode===m?T.encre:T.gris, fontWeight:mode===m?800:600, fontSize:13, cursor:"pointer", fontFamily:"inherit", boxShadow:mode===m?"0 2px 8px rgba(0,0,0,.08)":"none", transition:"all .2s" }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Email</div>
+          <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="ton@email.com" style={{ width:"100%", background:T.fond, border:`1.5px solid ${T.vertM}`, borderRadius:12, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" }}/>
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Mot de passe</div>
+          <input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&submit()} style={{ width:"100%", background:T.fond, border:`1.5px solid ${T.vertM}`, borderRadius:12, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" }}/>
+        </div>
+
+        {error && (
+          <div style={{ background:error.startsWith("✅")?T.vertL:T.roseL, border:`1.5px solid ${error.startsWith("✅")?T.vertM:T.rose}44`, borderRadius:12, padding:"10px 14px", marginBottom:16, fontSize:12, fontWeight:700, color:error.startsWith("✅")?T.vert:T.rose }}>
+            {error}
+          </div>
+        )}
+
+        <button onClick={submit} disabled={loading||!email||!password} style={{ width:"100%", background:loading||!email||!password?T.gris:`linear-gradient(135deg,${T.vert},${T.vert2})`, color:"#fff", border:"none", borderRadius:14, padding:"14px", fontWeight:900, fontSize:15, cursor:loading||!email||!password?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:loading?"none":`0 4px 16px ${T.vert}44` }}>
+          {loading ? "Chargement..." : mode==="login" ? "Se connecter →" : "Créer mon compte →"}
+        </button>
+
+        {mode==="login" && (
+          <div style={{ textAlign:"center", marginTop:16, fontSize:12, color:T.gris, fontWeight:600 }}>
+            Première fois ? <button onClick={() => setMode("signup")} style={{ background:"none", border:"none", color:T.vert, fontWeight:800, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>Créer un compte</button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop:24, fontSize:11, color:"rgba(255,255,255,.35)", fontWeight:600, textAlign:"center" }}>
+        Plan Me · Données sécurisées · Sans engagement
+      </div>
+    </div>
+  );
+}
 
 function OnboardingBubble({ tab, onDismiss }) {
   const info = ONBOARDING[tab];
@@ -215,7 +349,7 @@ function Catalogue({ robes, setRobes, toast }) {
         if (up.ok) photo_url = `${SUPABASE_URL}/storage/v1/object/public/photos-robes/${fname}`;
       }
 
-      const data = { nom:form.nom, categorie:form.categorie, taille, prix:+form.prix, caution:+form.caution, shade, photo_url };
+      const data = { nom:form.nom, categorie:form.categorie, taille, prix:+form.prix, caution:+form.caution, shade, photo_url, user_id:_userId };
 
       if (editId) {
         await api("PATCH", `robes?id=eq.${editId}`, data);
@@ -420,11 +554,11 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
     let cl = clientes.find(c => c.nom.toLowerCase()===form.nom.toLowerCase());
     if (!cl) {
       cl = { id:`c${Date.now()}`, nom:form.nom, tel:form.tel };
-      try { const r = await api("POST","clientes",cl); if(Array.isArray(r)&&r[0]) cl=r[0]; } catch(e) {}
+      try { const r = await api("POST","clientes",{nom:form.nom,tel:form.tel,user_id:_userId}); if(Array.isArray(r)&&r[0]) cl=r[0]; } catch(e) {}
       setClientes(p => [...p, cl]);
     }
     const ess = { id:`e${Date.now()}`, cid:cl.id, rid:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note };
-    try { await api("POST","essayages",{ cliente_id:cl.id, robe_id:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note }); } catch(e) {}
+    try { await api("POST","essayages",{ cliente_id:cl.id, robe_id:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note, user_id:_userId }); } catch(e) {}
     setEssayages(p => [...p, ess]);
     toast("📅 Essayage enregistré !");
     setModal(false);
@@ -830,10 +964,19 @@ export default function App() {
   const [essayages, setEssayages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [user, setUser] = useState(null); // null = non connecté
+  const [authChecked, setAuthChecked] = useState(false);
 
   const showToast = msg => setToast({ msg, key:Date.now() });
 
   useEffect(() => { injectStyles(); }, []);
+
+  // Vérifier session existante au démarrage
+  useEffect(() => {
+    const session = auth.getSession();
+    if (session) setUser(session);
+    setAuthChecked(true);
+  }, []);
 
   // Onboarding — voir quels onglets ont déjà été vus
   const [seenTabs, setSeenTabs] = useState(() => {
@@ -846,18 +989,20 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!user) return;
+    setLoading(true);
     Promise.all([
-      api("GET","robes?select=*&order=created_at"),
-      api("GET","clientes?select=*&order=nom"),
-      api("GET","reservations?select=*&order=created_at"),
-      api("GET","essayages?select=*&order=date"),
+      api("GET","robes?select=*&order=created_at&user_id=eq."+user.userId),
+      api("GET","clientes?select=*&order=nom&user_id=eq."+user.userId),
+      api("GET","reservations?select=*&order=created_at&user_id=eq."+user.userId),
+      api("GET","essayages?select=*&order=date&user_id=eq."+user.userId),
     ]).then(([r,cl,res,ess]) => {
       if (Array.isArray(r)) setRobes(r);
       if (Array.isArray(cl)) setClientes(cl);
       if (Array.isArray(res)) setReservations(res.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
       if (Array.isArray(ess)) setEssayages(ess.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
     }).catch(console.error).finally(()=>setLoading(false));
-  },[]);
+  },[user]);
 
   const TABS = [
     { id:"catalogue", label:"Catalogue", Icon:Package },
@@ -868,6 +1013,15 @@ export default function App() {
   ];
 
   const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", stats:"Statistiques" };
+
+  if (!authChecked) return null;
+  if (!user) return <AuthScreen onAuth={u => setUser(u)} />;
+
+  const handleSignOut = async () => {
+    await auth.signOut();
+    setUser(null);
+    setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
+  };
 
   return (
     <div style={{ fontFamily:"'Nunito',sans-serif", background:T.fond, minHeight:"100vh", maxWidth:430, margin:"0 auto", position:"relative", paddingBottom:80 }}>
@@ -884,9 +1038,9 @@ export default function App() {
           <div style={{ background:T.vertL, borderRadius:10, padding:"5px 12px" }}>
             <span style={{ fontSize:12, fontWeight:800, color:T.vert }}>{titles[tab]}</span>
           </div>
-          <div style={{ width:36, height:36, borderRadius:12, background:T.vertL, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <TrendingUp size={16} color={T.vert}/>
-          </div>
+          <button onClick={handleSignOut} title="Se déconnecter" style={{ width:36, height:36, borderRadius:12, background:T.vertL, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>
+            🚪
+          </button>
         </div>
       </div>
 
