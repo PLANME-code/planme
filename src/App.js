@@ -274,7 +274,7 @@ const FAB=({onClick})=>{
 };
 
 // ─── CATALOGUE ──────────────────────────────────────────────
-const Catalogue=({cat,setCat})=>{
+const Catalogue=({cat,setCat,showToast})=>{
   const [q,setQ]=useState("");
   const [catF,setCatF]=useState("Toutes");
   const [modal,setModal]=useState(false);
@@ -398,7 +398,7 @@ const Catalogue=({cat,setCat})=>{
 };
 
 // ─── ESSAYAGES ──────────────────────────────────────────────
-const Essayages=({ess,setEss,cat,cli,setCli})=>{
+const Essayages=({ess,setEss,cat,cli,setCli,showToast})=>{
   const [mois,setMois]=useState(new Date(2026,6,1));
   const [sel,setSel]=useState(TODAY_STR);
   const [modal,setModal]=useState(false);
@@ -413,6 +413,7 @@ const Essayages=({ess,setEss,cat,cli,setCli})=>{
     if(!c){c={id:`c${Date.now()}`,nom:form.nom,tel:form.tel};setCli(p=>[...p,c]);}
     setEss(p=>[...p,{id:`e${Date.now()}`,cid:c.id,rid:form.rid,date:sel,heure:form.heure,statut:"aVenir",note:form.note}]);
     setModal(false);setForm({nom:"",tel:"",rid:"",heure:"10:00",note:""});
+    showToast?.('📅 Essayage enregistré !');
   };
 
   return (
@@ -506,7 +507,7 @@ const Planning=({res,cat,cli})=>{
         :dayRes.map(r=>{
           const robe=cat.find(x=>x.id===r.rid),c=cli.find(x=>x.id===r.cid);
           return (
-            <TapCard key={r.id}>
+            <TapCard key={r.id} style={{animation:'cardIn .4s cubic-bezier(.22,1,.36,1) both'}}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
                 <Avatar color={robe?.shade} nom={c?.nom} size={46}/>
                 <div style={{flex:1}}>
@@ -530,7 +531,7 @@ const Planning=({res,cat,cli})=>{
 };
 
 // ─── RÉSERVATIONS ───────────────────────────────────────────
-const Reservations=({res,setRes,cat,cli,setCli})=>{
+const Reservations=({res,setRes,cat,cli,setCli,showToast})=>{
   const [modal,setModal]=useState(false);
   const [detail,setDetail]=useState(null);
   const [q,setQ]=useState("");
@@ -550,6 +551,7 @@ const Reservations=({res,setRes,cat,cli,setCli})=>{
     if(!c){c={id:`c${Date.now()}`,nom:form.nom,tel:form.tel};setCli(p=>[...p,c]);}
     setRes(p=>[...p,{id:`v${Date.now()}`,cid:c.id,rid:form.rid,debut:form.debut,fin:form.fin||form.debut,prix:+form.prix,caution:+form.caution,acompte:+form.acompte||0,statut:"confirmee",note:form.note}]);
     setModal(false);setForm({nom:"",tel:"",rid:"",debut:"",fin:"",prix:"",caution:"",acompte:"",note:""});
+    showToast?.('🎉 Réservation confirmée !');
   };
 
   const statCol={confirmee:T.vert,enCours:T.rose,terminee:T.gris2};
@@ -866,6 +868,7 @@ export default function App(){
   const [ess,setEss]=useState(ESS_INIT);
   const [loading,setLoading]=useState(true);
   const [dbOk,setDbOk]=useState(false);
+  const {toast,show:showToast}=useToast();
 
   // Charger les données depuis Supabase au démarrage
   useEffect(()=>{
@@ -927,13 +930,14 @@ export default function App(){
       </div>
 
       <div style={{paddingTop:16}}>
-        {tab==="catalogue"&&<Catalogue cat={cat} setCat={setCat}/>}
-        {tab==="essayages"&&<Essayages ess={ess} setEss={setEss} cat={cat} cli={cli} setCli={setCli}/>}
-        {tab==="planning"&&<Planning res={res} cat={cat} cli={cli}/>}
-        {tab==="resa"&&<Reservations res={res} setRes={setRes} cat={cat} cli={cli} setCli={setCli}/>}
+        {tab==="catalogue"&&<Catalogue cat={cat} setCat={setCat} showToast={showToast}/>}
+        {tab==="essayages"&&<Essayages ess={ess} setEss={setEss} cat={cat} cli={cli} setCli={setCli} showToast={showToast}/>}
+        {tab==="planning"&&<Planning res={res} cat={cat} cli={cli} showToast={showToast}/>}
+        {tab==="resa"&&<Reservations res={res} setRes={setRes} cat={cat} cli={cli} setCli={setCli} showToast={showToast}/>}
         {tab==="stats"&&<Stats res={res} cat={cat} cli={cli}/>}
       </div>
 
+      <Toast toast={toast}/>
       {/* Tab bar avec indicateur animé */}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.blanc,borderTop:"none",display:"flex",zIndex:200,boxShadow:"0 -4px 24px rgba(15,30,19,0.12)"}}>
         {TABS.map(({id,label,Icon})=>{
