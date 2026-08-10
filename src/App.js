@@ -469,8 +469,10 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
           return (
             <div key={r.id} onClick={()=>setDetail({r,robe,cl,reste})} style={{ background:T.blanc, borderRadius:18, border:`1.5px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, cursor:"pointer", boxShadow:"0 2px 10px rgba(58,125,87,.07)" }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
-                <Avatar color={robe?.shade} nom={cl?.nom} size={44}/>
-                <div style={{ flex:1 }}>
+                                {robe?.photo_url
+                  ? <img src={robe.photo_url} alt={robe.nom} style={{width:44,height:44,borderRadius:12,objectFit:"cover",flexShrink:0}}/>
+                  : <Avatar color={robe?.shade} nom={robe?.nom} size={44}/>
+                } <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
                   <div style={{ fontSize:12, color:T.gris }}>{robe?.nom}</div>
                 </div>
