@@ -850,7 +850,12 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
         <Plus size={24}/>
       </button>
       <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
-        <Field label="Cliente"><input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/></Field>
+        <Field label="Cliente">
+          <input list="clientes-list" style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom ou premières lettres..."/>
+          <datalist id="clientes-list">
+            {clientes.map(cl=><option key={cl.id} value={cl.nom}>{cl.tel}</option>)}
+          </datalist>
+        </Field>
         <Field label="Téléphone"><input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/></Field>
         <Field label="Pièce à essayer">
           {robes.length === 0
@@ -947,6 +952,7 @@ function Planning({ reservations, robes, clientes }) {
 function Reservations({ reservations, setReservations, robes, clientes, setClientes, toast }) {
   const [modal, setModal] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [editResaId, setEditResaId] = useState(null);
   const [q, setQ] = useState("");
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"" });
 
