@@ -774,23 +774,30 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
         <Field label="Cliente"><input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/></Field>
         <Field label="Téléphone"><input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/></Field>
         <Field label="Pièce à essayer">
-          <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
-            {robes.map(r => (
-              <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:12, border:form.rid===r.id?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`, background:form.rid===r.id?T.vertL:T.blanc, cursor:"pointer" }}>
-                {r.photo_url
-                  ? <img src={r.photo_url} alt={r.nom} style={{width:34,height:34,borderRadius:10,objectFit:"cover",flexShrink:0}}/>
-                  : <Avatar color={r.shade} nom={r.nom} size={34}/>
-                }
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, fontSize:13, color:form.rid===r.id?T.vert:T.encre }}>{r.nom}</div>
-                  <div style={{ fontSize:11, color:T.gris }}>T.{r.taille}</div>
-                </div>
-                {form.rid===r.id && <Check size={16} color={T.vert}/>}
+          {robes.length === 0
+            ? <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:12, padding:"12px 14px", fontSize:12, color:"#8B3020", fontWeight:700 }}>
+                ⚠️ Aucune pièce dans le catalogue. Ajoute d'abord des pièces dans l'onglet Catalogue.
               </div>
-            ))}
-          </div>
+            : <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
+                {robes.map(r => (
+                  <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:12, border:form.rid===r.id?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`, background:form.rid===r.id?T.vertL:T.blanc, cursor:"pointer" }}>
+                    {r.photo_url
+                      ? <img src={r.photo_url} alt={r.nom} style={{width:34,height:34,borderRadius:10,objectFit:"cover",flexShrink:0}}/>
+                      : <Avatar color={r.shade} nom={r.nom} size={34}/>
+                    }
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:800, fontSize:13, color:form.rid===r.id?T.vert:T.encre }}>{r.nom}</div>
+                      <div style={{ fontSize:11, color:T.gris }}>{r.categorie} · T.{r.taille} · {r.prix}€</div>
+                    </div>
+                    {form.rid===r.id && <Check size={16} color={T.vert}/>}
+                  </div>
+                ))}
+              </div>
+          }
         </Field>
-        <Field label="Heure"><input style={inputStyle} type="time" value={form.heure} onChange={e=>setForm(p=>({...p,heure:e.target.value}))}/></Field>
+        <Field label="Heure">
+          <input style={inputStyle} type="time" value={form.heure} onChange={e=>setForm(p=>({...p,heure:e.target.value}))}/>
+        </Field>
         <Field label="Note"><input style={inputStyle} value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: voir aussi T.38"/></Field>
         <BtnPrimary onClick={save} disabled={!form.nom||!form.rid}>Enregistrer l'essayage ✓</BtnPrimary>
       </Modal>
