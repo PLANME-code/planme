@@ -743,6 +743,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
   const [mois, setMois] = useState(new Date());
   const [sel, setSel] = useState(TODAY);
   const [modal, setModal] = useState(false);
+  const [editEssId, setEditEssId] = useState(null);
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", heure:"10:00", note:"" });
 
   const cells = buildCal(mois, essayages.map(e => ({ date:e.date, debut:e.date, fin:e.date })));
@@ -756,11 +757,20 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
       try { const r = await api("POST","clientes",{nom:form.nom,tel:form.tel,user_id:_userId}); if(Array.isArray(r)&&r[0]) cl=r[0]; } catch(e) {}
       setClientes(p => [...p, cl]);
     }
-    const ess = { id:`e${Date.now()}`, cid:cl.id, rid:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note };
-    try { await api("POST","essayages",{ cliente_id:cl.id, robe_id:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note, user_id:_userId }); } catch(e) {}
-    setEssayages(p => [...p, ess]);
-    toast("📅 Essayage enregistré !");
+    if (editEssId) {
+      // Mode modification
+      const upd = { robe_id:form.rid, heure:form.heure, note:form.note };
+      try { await api("PATCH",`essayages?id=eq.${editEssId}`,upd); } catch(e) {}
+      setEssayages(p=>p.map(x=>x.id===editEssId?{...x,rid:form.rid,heure:form.heure,note:form.note}:x));
+      toast("✅ Essayage modifié !");
+    } else {
+      const ess = { id:`e${Date.now()}`, cid:cl.id, rid:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note };
+      try { await api("POST","essayages",{ cliente_id:cl.id, robe_id:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note, user_id:_userId }); } catch(e) {}
+      setEssayages(p => [...p, ess]);
+      toast("📅 Essayage enregistré !");
+    }
     setModal(false);
+    setEditEssId(null);
     setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" });
   };
 
@@ -787,14 +797,24 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
             const r = robes.find(x=>x.id===e.rid);
             const cl = clientes.find(x=>x.id===e.cid);
             return (
-              <div key={e.id} style={{ background:T.blanc, borderRadius:16, border:`1.5px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10, display:"flex", gap:12, alignItems:"center" }}>
-                <Avatar color={r?.shade} nom={cl?.nom} size={44}/>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
-                  <div style={{ fontSize:12, color:T.gris }}>{r?.nom} · {e.heure}</div>
-                  {e.note && <div style={{ fontSize:11, color:T.rose, marginTop:3, fontStyle:"italic" }}>{e.note}</div>}
+              <div key={e.id} style={{ background:T.blanc, borderRadius:16, border:`1.5px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10 }}>
+                <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:10 }}>
+                  <Avatar color={r?.shade} nom={cl?.nom} size={44}/>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
+                    <div style={{ fontSize:12, color:T.gris }}>{r?.nom} · {e.heure}</div>
+                    {e.note && <div style={{ fontSize:11, color:T.rose, marginTop:3, fontStyle:"italic" }}>{e.note}</div>}
+                  </div>
+                  <span style={{ background:e.date<TODAY?T.fond:T.vertL, color:e.date<TODAY?T.gris:T.vert, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{e.date<TODAY?"Passé":"À venir"}</span>
                 </div>
-                <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>À venir</span>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"8px", borderRadius:11, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                    ✏️ Modifier
+                  </button>
+                  <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("🗑️ Essayage supprimé"); }} style={{ padding:"8px", borderRadius:11, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                    🗑️ Supprimer
+                  </button>
+                </div>
               </div>
             );
           })
@@ -802,7 +822,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
       <button onClick={() => setModal(true)} style={{ position:"fixed", bottom:90, right:20, width:54, height:54, borderRadius:"50%", background:`linear-gradient(135deg,${T.vert},${T.vert2})`, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
         <Plus size={24}/>
       </button>
-      <Modal open={modal} onClose={() => setModal(false)} title={`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
+      <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
         <Field label="Cliente"><input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/></Field>
         <Field label="Téléphone"><input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/></Field>
         <Field label="Pièce à essayer">
@@ -831,7 +851,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
           <input style={inputStyle} type="time" value={form.heure} onChange={e=>setForm(p=>({...p,heure:e.target.value}))}/>
         </Field>
         <Field label="Note"><input style={inputStyle} value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: voir aussi T.38"/></Field>
-        <BtnPrimary onClick={save} disabled={!form.nom||!form.rid}>Enregistrer l'essayage ✓</BtnPrimary>
+        <BtnPrimary onClick={save} disabled={!form.nom||!form.rid}>{editEssId?"Enregistrer les modifications ✓":"Enregistrer l'essayage ✓"}</BtnPrimary>
       </Modal>
     </div>
   );
