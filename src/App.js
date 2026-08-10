@@ -95,6 +95,7 @@ function Catalogue({ robes, setRobes, toast }) {
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState({ nom:"", categorie:"", tailleMin:"", tailleMax:"", prix:"", caution:"", photoFile:null, photoPreview:null });
   const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState(null);
 
   const filtered = useMemo(() => robes.filter(r => r.nom?.toLowerCase().includes(q.toLowerCase())), [robes, q]);
 
@@ -109,9 +110,9 @@ function Catalogue({ robes, setRobes, toast }) {
     setSaving(true);
     try {
       const taille = form.tailleMax ? `${form.tailleMin} → ${form.tailleMax}` : form.tailleMin;
-      const shade = SHADES[robes.length % SHADES.length];
+      const shade = editId ? (robes.find(r=>r.id===editId)?.shade || SHADES[robes.length % SHADES.length]) : SHADES[robes.length % SHADES.length];
 
-      let photo_url = null;
+      let photo_url = form.photoPreview && !form.photoFile ? form.photoPreview : null;
       if (form.photoFile) {
         const ext = form.photoFile.name.split('.').pop();
         const fname = `robe_${Date.now()}.${ext}`;
@@ -124,15 +125,23 @@ function Catalogue({ robes, setRobes, toast }) {
       }
 
       const data = { nom:form.nom, categorie:form.categorie, taille, prix:+form.prix, caution:+form.caution, shade, photo_url };
-      const res = await api("POST", "robes", data);
-      const newRobe = Array.isArray(res) ? res[0] : { id:`local_${Date.now()}`, ...data };
-      setRobes(p => [...p, newRobe]);
-      toast(`✨ ${form.nom} ajoutée !`);
+
+      if (editId) {
+        await api("PATCH", `robes?id=eq.${editId}`, data);
+        setRobes(p => p.map(r => r.id===editId ? {...r,...data} : r));
+        toast(`✅ ${form.nom} modifiée !`);
+      } else {
+        const res = await api("POST", "robes", data);
+        const newRobe = Array.isArray(res) ? res[0] : { id:`local_${Date.now()}`, ...data };
+        setRobes(p => [...p, newRobe]);
+        toast(`✨ ${form.nom} ajoutée !`);
+      }
       setModal(false);
+      setEditId(null);
       setForm({ nom:"", categorie:"", tailleMin:"", tailleMax:"", prix:"", caution:"", photoFile:null, photoPreview:null });
     } catch(e) {
       console.error(e);
-      toast("Erreur lors de l'ajout");
+      toast("Erreur lors de l'enregistrement");
     }
     setSaving(false);
   };
@@ -180,7 +189,7 @@ function Catalogue({ robes, setRobes, toast }) {
       </button>
 
       {/* Modal ajout */}
-      <Modal open={modal} onClose={() => setModal(false)} title="Nouvelle pièce">
+      <Modal open={modal} onClose={() => { setModal(false); setEditId(null); setForm({ nom:"", categorie:"", tailleMin:"", tailleMax:"", prix:"", caution:"", photoFile:null, photoPreview:null }); }} title={editId ? "Modifier la pièce" : "Nouvelle pièce"}>
         <Field label="Nom de la pièce">
           <input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="ex: Karakou Yasmine" />
         </Field>
@@ -213,7 +222,7 @@ function Catalogue({ robes, setRobes, toast }) {
           </label>
         </Field>
         <BtnPrimary onClick={save} disabled={saving||!form.nom||!form.prix}>
-          {saving ? "Enregistrement..." : "Ajouter au catalogue ✓"}
+          {saving ? "Enregistrement..." : editId ? "Enregistrer les modifications ✓" : "Ajouter au catalogue ✓"}
         </BtnPrimary>
       </Modal>
 
@@ -240,7 +249,14 @@ function Catalogue({ robes, setRobes, toast }) {
               <span style={{ fontSize:13, fontWeight:700, color:T.vert }}>Disponible à la location</span>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-              <button onClick={() => setDetail(null)} style={{ padding:"11px", borderRadius:13, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+              <button onClick={() => {
+                const r = detail;
+                const parts = r.taille?.split(' → ') || [];
+                setForm({ nom:r.nom, categorie:r.categorie||"", tailleMin:parts[0]||"", tailleMax:parts[1]||"", prix:r.prix?.toString()||"", caution:r.caution?.toString()||"", photoFile:null, photoPreview:r.photo_url||null });
+                setEditId(r.id);
+                setDetail(null);
+                setModal(true);
+              }} style={{ padding:"11px", borderRadius:13, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
                 ✏️ Modifier
               </button>
               <button onClick={() => deleteRobe(detail)} style={{ padding:"11px", borderRadius:13, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
@@ -358,10 +374,21 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
         <Field label="Cliente"><input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/></Field>
         <Field label="Téléphone"><input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/></Field>
         <Field label="Pièce à essayer">
-          <select style={inputStyle} value={form.rid} onChange={e=>setForm(p=>({...p,rid:e.target.value}))}>
-            <option value="">Choisir une pièce...</option>
-            {robes.map(r=><option key={r.id} value={r.id}>{r.nom} · T.{r.taille}</option>)}
-          </select>
+          <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
+            {robes.map(r => (
+              <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:12, border:form.rid===r.id?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`, background:form.rid===r.id?T.vertL:T.blanc, cursor:"pointer" }}>
+                {r.photo_url
+                  ? <img src={r.photo_url} alt={r.nom} style={{width:34,height:34,borderRadius:10,objectFit:"cover",flexShrink:0}}/>
+                  : <Avatar color={r.shade} nom={r.nom} size={34}/>
+                }
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:800, fontSize:13, color:form.rid===r.id?T.vert:T.encre }}>{r.nom}</div>
+                  <div style={{ fontSize:11, color:T.gris }}>T.{r.taille}</div>
+                </div>
+                {form.rid===r.id && <Check size={16} color={T.vert}/>}
+              </div>
+            ))}
+          </div>
         </Field>
         <Field label="Heure"><input style={inputStyle} type="time" value={form.heure} onChange={e=>setForm(p=>({...p,heure:e.target.value}))}/></Field>
         <Field label="Note"><input style={inputStyle} value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: voir aussi T.38"/></Field>
@@ -430,7 +457,8 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   });
 
   const rSelected = robes.find(r=>r.id===form.rid);
-  const reste = (+form.prix||0) - (+form.acompte||0);
+  const prixApplique = form.prixExc ? +form.prixExc : (+form.prix||0);
+  const reste = prixApplique - (+form.acompte||0);
 
   const save = async () => {
     if (!form.nom || !form.rid || !form.debut || !form.acompte) return;
@@ -440,13 +468,14 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       try { const r = await api("POST","clientes",cl); if(Array.isArray(r)&&r[0]) cl=r[0]; } catch(e) {}
       setClientes(p => [...p, cl]);
     }
-    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:+form.prix, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", note:form.note };
+    const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
+    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note };
     const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
     try { await api("POST","reservations",data); } catch(e) {}
     setReservations(p => [...p, local]);
     toast("🎉 Réservation confirmée !");
     setModal(false);
-    setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"" });
+    setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"" });
   };
 
   const statCol = { confirmee:T.vert, enCours:T.rose, terminee:T.gris };
@@ -577,11 +606,21 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
         </Field>
         {+form.prix>0 && (
           <div style={{ background:T.roseL, borderRadius:14, padding:"12px 14px", marginBottom:14 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:T.gris, marginBottom:4 }}><span>Prix dû</span><span>{form.prix}€</span></div>
+            {form.prixExc && <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:T.gris, marginBottom:2 }}><span>Prix catalogue</span><span style={{textDecoration:"line-through"}}>{form.prix}€</span></div>}
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:form.prixExc?T.rose:T.gris, marginBottom:4, fontWeight:form.prixExc?700:600 }}><span>{form.prixExc?"✏️ Prix exceptionnel":"Prix dû"}</span><span>{form.prixExc||form.prix}€</span></div>
             <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:T.gris, marginBottom:8 }}><span>Acompte</span><span>−{form.acompte||0}€</span></div>
             <div style={{ display:"flex", justifyContent:"space-between", fontWeight:900, fontSize:16, color:T.vert, borderTop:`1.5px solid ${T.vertM}`, paddingTop:8 }}><span>Reste à payer</span><span>{reste}€</span></div>
           </div>
         )}
+        {/* Prix exceptionnel */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>
+            Prix exceptionnel (optionnel)
+            <span style={{ background:T.roseL, color:T.rose, fontSize:9, fontWeight:800, padding:"2px 7px", borderRadius:6, marginLeft:6 }}>✏️ ristourne</span>
+          </div>
+          <input style={{ ...inputStyle, borderColor:form.prixExc?T.rose:T.vertM, background:form.prixExc?T.roseL:T.fond }} type="number" value={form.prixExc||""} onChange={e=>setForm(p=>({...p,prixExc:e.target.value}))} placeholder={`Catalogue : ${rSelected?.prix||""}€ — laisser vide si prix normal`}/>
+          {form.prixExc && <div style={{ fontSize:11, color:T.rose, fontWeight:700, marginTop:4 }}>✏️ Prix modifié · catalogue : {rSelected?.prix}€ · appliqué : {form.prixExc}€</div>}
+        </div>
         <Field label="Note"><input style={inputStyle} value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: suite à l'essayage du 11 juil."/></Field>
         <BtnPrimary onClick={save} disabled={!form.nom||!form.rid||!form.debut||!form.acompte}>Confirmer la réservation ✓</BtnPrimary>
       </Modal>
