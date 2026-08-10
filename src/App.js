@@ -773,11 +773,10 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
         essayages.forEach(e=>{
           if(!m[e.date]) m[e.date]=[];
           const cl=clientes.find(x=>x.id===e.cid);
-          const r=robes.find(x=>x.id===e.rid);
           m[e.date].push({ nom:cl?.nom?.split(' ')[0]||"?", initiale:cl?.nom?.[0]||"?", color:"#B8789E", heure:e.heure });
         });
         return m;
-      },[])}/>
+      },[essayages,clientes])}/>
       </div>
       <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:10, textTransform:"capitalize" }}>
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
@@ -863,7 +862,7 @@ function Planning({ reservations, robes, clientes }) {
           }
         });
         return m;
-      },[])}/>
+      },[reservations,clientes,robes])}/>
       </div>
       <div style={{ background:T.vertL, border:`1.5px solid ${T.vert}33`, borderRadius:14, padding:"10px 14px", marginBottom:12, fontSize:12, color:T.vert, fontWeight:700 }}>
         📅 Planning des réservations · distinct du planning essayages
