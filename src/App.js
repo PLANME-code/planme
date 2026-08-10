@@ -550,7 +550,10 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
           <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
             {robes.map(r => (
               <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id,prix:r.prix?.toString()||"",caution:r.caution?.toString()||""}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:12, border:form.rid===r.id?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`, background:form.rid===r.id?T.vertL:T.blanc, cursor:"pointer" }}>
-                <Avatar color={r.shade} nom={r.nom} size={34}/>
+                {r.photo_url
+                  ? <img src={r.photo_url} alt={r.nom} style={{width:34,height:34,borderRadius:10,objectFit:"cover",flexShrink:0}}/>
+                  : <Avatar color={r.shade} nom={r.nom} size={34}/>
+                }
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:13, color:form.rid===r.id?T.vert:T.encre }}>{r.nom}</div>
                   <div style={{ fontSize:11, color:T.gris }}>T.{r.taille} · {r.prix}€</div>
