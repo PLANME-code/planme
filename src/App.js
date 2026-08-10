@@ -971,8 +971,31 @@ export default function App() {
 
   useEffect(() => { injectStyles(); }, []);
 
-  // Vérifier session existante au démarrage
+  // Vérifier session existante au démarrage + gérer confirmation email
   useEffect(() => {
+    // Vérifier si on revient d'une confirmation email (hash dans l'URL)
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      const params = new URLSearchParams(hash.replace('#',''));
+      const token = params.get('access_token');
+      const userId = null; // sera récupéré via le token
+      if (token) {
+        // Décoder le userId depuis le JWT
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const email = payload.email || '';
+          const uid = payload.sub || '';
+          _token = token;
+          _userId = uid;
+          try { localStorage.setItem('planme_session', JSON.stringify({ token, userId:uid, email })); } catch(e) {}
+          setUser({ token, userId:uid, email });
+          // Nettoyer l'URL
+          window.history.replaceState({}, '', window.location.pathname);
+          setAuthChecked(true);
+          return;
+        } catch(e) {}
+      }
+    }
     const session = auth.getSession();
     if (session) setUser(session);
     setAuthChecked(true);
