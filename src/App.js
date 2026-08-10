@@ -279,14 +279,14 @@ const Catalogue=({cat,setCat})=>{
   const [catF,setCatF]=useState("Toutes");
   const [modal,setModal]=useState(false);
   const [detail,setDetail]=useState(null);
-  const [form,setForm]=useState({nom:"",categorie:CATS[0],taille:"38",prix:"",caution:""});
+  const [form,setForm]=useState({nom:"",categorie:"",taille:"",tailleMin:"",tailleMax:"",prix:"",caution:""});
 
   const filtered=useMemo(()=>cat.filter(r=>(catF==="Toutes"||r.categorie===catF)&&r.nom.toLowerCase().includes(q.toLowerCase())),[cat,catF,q]);
 
   const add=()=>{
     if(!form.nom||!form.prix)return;
     setCat(p=>[...p,{id:`r${Date.now()}`,shade:SHADES[p.length%8],...form,prix:+form.prix,caution:+form.caution}]);
-    setModal(false);setForm({nom:"",categorie:CATS[0],taille:"38",prix:"",caution:""});
+    setModal(false);setForm({nom:"",categorie:"",taille:"",tailleMin:"",tailleMax:"",prix:"",caution:""});
   };
 
   return (
@@ -334,20 +334,33 @@ const Catalogue=({cat,setCat})=>{
       {/* Modal ajout */}
       <Modal open={modal} onClose={()=>setModal(false)} title="Nouvelle pièce">
         <Input label="Nom de la pièce" value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="ex: Karakou Yasmine"/>
-        <Select label="Catégorie" value={form.categorie} onChange={e=>setForm(p=>({...p,categorie:e.target.value}))}>
-          {CATS.map(c=><option key={c}>{c}</option>)}
-        </Select>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Select label="Taille" value={form.taille} onChange={e=>setForm(p=>({...p,taille:e.target.value}))}>
-            {["34","36","38","40","42","44"].map(t=><option key={t}>{t}</option>)}
-          </Select>
-          <Input label="Prix (€)" type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder="120"/>
+        <Input label="Type de pièce" value={form.categorie} onChange={e=>setForm(p=>({...p,categorie:e.target.value}))} placeholder="ex: Karakou, Caftan, Robe de soirée..."/>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>Taille(s)</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:8,alignItems:"center"}}>
+            <input value={form.tailleMin||""} onChange={e=>setForm(p=>({...p,tailleMin:e.target.value,taille:e.target.value+(p.tailleMax?` → ${p.tailleMax}`:"")}))} placeholder="T.36" style={{background:T.fond,border:`1.5px solid ${T.vertM}`,borderRadius:12,padding:"11px 14px",fontSize:15,fontFamily:"inherit",fontWeight:600,color:T.encre,outline:"none",textAlign:"center"}}/>
+            <span style={{fontSize:13,fontWeight:700,color:T.gris2,textAlign:"center"}}>→</span>
+            <input value={form.tailleMax||""} onChange={e=>setForm(p=>({...p,tailleMax:e.target.value,taille:(p.tailleMin||"")+` → ${e.target.value}`}))} placeholder="T.42" style={{background:T.fond,border:`1.5px solid ${T.vertM}`,borderRadius:12,padding:"11px 14px",fontSize:15,fontFamily:"inherit",fontWeight:600,color:T.encre,outline:"none",textAlign:"center"}}/>
+          </div>
+          <div style={{fontSize:11,color:T.gris2,marginTop:5,fontWeight:600}}>Laisse vide la 2ème case si taille unique</div>
         </div>
+        <Input label="Prix (€)" type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder="120"/>
         <Input label="Caution (€)" type="number" value={form.caution} onChange={e=>setForm(p=>({...p,caution:e.target.value}))} placeholder="300"/>
-        <div style={{border:`2px dashed ${T.vertM}`,borderRadius:14,padding:"20px",textAlign:"center",marginBottom:16,background:T.fond,cursor:"pointer"}}>
-          <div style={{fontSize:24,marginBottom:6}}>📷</div>
-          <div style={{fontSize:12,fontWeight:700,color:T.vert}}>Ajouter une photo</div>
-          <div style={{fontSize:11,color:T.gris2,marginTop:2}}>Appuyer pour uploader</div>
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:10,fontWeight:800,color:T.gris2,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>Photo de la pièce</div>
+          <label style={{display:"block",border:`2px dashed ${T.vertM}`,borderRadius:14,padding:"20px",textAlign:"center",background:T.fond,cursor:"pointer"}}>
+            <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+              const file=e.target.files[0];
+              if(!file)return;
+              const reader=new FileReader();
+              reader.onload=ev=>setForm(p=>({...p,photoUrl:ev.target.result,photoFile:file}));
+              reader.readAsDataURL(file);
+            }}/>
+            {form.photoUrl
+              ?<img src={form.photoUrl} alt="preview" style={{width:"100%",height:140,objectFit:"cover",borderRadius:10}}/>
+              :<><div style={{fontSize:24,marginBottom:6}}>📷</div><div style={{fontSize:12,fontWeight:700,color:T.vert}}>Appuyer pour choisir une photo</div><div style={{fontSize:11,color:T.gris2,marginTop:2}}>JPG, PNG acceptés</div></>
+            }
+          </label>
         </div>
         <BtnPrimary onClick={add} disabled={!form.nom||!form.prix}>Ajouter au catalogue ✓</BtnPrimary>
       </Modal>
