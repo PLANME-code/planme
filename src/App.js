@@ -119,11 +119,19 @@ const injectStyles = () => {
     @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(58,125,87,.4); } 60% { box-shadow:0 0 0 10px rgba(58,125,87,0); } }
     @keyframes bounce { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
     @keyframes shimmer { 0% { background-position:-400px 0; } 100% { background-position:400px 0; } }
+    @keyframes spin { to { transform:rotate(360deg); } }
     .card-anim { animation: fadeUp .4s cubic-bezier(.22,1,.36,1) both; }
     .tap-card { transition: transform .12s cubic-bezier(.32,1.2,.55,1), box-shadow .12s; cursor:pointer; }
     .tap-card:active { transform: scale(0.965) !important; box-shadow: 0 1px 4px rgba(58,125,87,.06) !important; }
-    .tab-content { animation: fadeIn .3s ease both; }
+    .tab-content { animation: fadeIn .25s ease both; }
     .onboarding-bubble { animation: popIn .4s cubic-bezier(.22,1,.36,1) both; }
+    .robe-card { transition: transform .15s cubic-bezier(.22,1,.36,1), box-shadow .15s; }
+    .robe-card:active { transform: scale(0.96); }
+    .btn-tap { transition: transform .1s cubic-bezier(.32,1.2,.55,1); }
+    .btn-tap:active { transform: scale(0.94); }
+    input:focus, select:focus { border-color: #3A7D57 !important; box-shadow: 0 0 0 3px rgba(58,125,87,.12) !important; transition: border-color .2s, box-shadow .2s; }
+    .modal-enter { animation: slideUp .35s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:none; } }
   `;
   document.head.appendChild(s);
 };
@@ -406,11 +414,30 @@ function OnboardingBubble({ tab, onDismiss }) {
   );
 }
 
-function Toast({ msg, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 2500); return () => clearTimeout(t); }, []);
+function Toast({ msg, type="success", onDone }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    setTimeout(() => setVisible(true), 10);
+    const t = setTimeout(() => { setVisible(false); setTimeout(onDone, 300); }, 2500);
+    return () => clearTimeout(t);
+  }, []);
+  const colors = { success:T.vert, error:"#D04040", info:T.rose };
+  const col = colors[type] || T.vert;
   return (
-    <div style={{ position:"fixed", bottom:90, left:"50%", transform:"translateX(-50%)", background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:14, padding:"12px 20px", display:"flex", gap:10, alignItems:"center", boxShadow:"0 8px 32px rgba(0,0,0,.15)", zIndex:999, fontFamily:"inherit", whiteSpace:"nowrap" }}>
-      <span style={{ fontSize:18 }}>✅</span>
+    <div style={{
+      position:"fixed", bottom:100, left:"50%",
+      transform:visible ? "translateX(-50%) translateY(0)" : "translateX(-50%) translateY(20px)",
+      opacity:visible ? 1 : 0,
+      transition:"all .35s cubic-bezier(.22,1,.36,1)",
+      background:T.blanc,
+      borderRadius:16,
+      padding:"13px 20px",
+      display:"flex", gap:12, alignItems:"center",
+      boxShadow:`0 8px 32px rgba(0,0,0,.15), 0 0 0 1px ${col}22`,
+      zIndex:999, fontFamily:"inherit", whiteSpace:"nowrap",
+      borderLeft:`3px solid ${col}`,
+    }}>
+      <div style={{ width:8, height:8, borderRadius:"50%", background:col, flexShrink:0 }}/>
       <span style={{ fontWeight:800, fontSize:13, color:T.encre }}>{msg}</span>
     </div>
   );
@@ -508,19 +535,19 @@ function Catalogue({ robes, setRobes, toast }) {
       if (editId) {
         await api("PATCH", `robes?id=eq.${editId}`, data);
         setRobes(p => p.map(r => r.id===editId ? {...r,...data} : r));
-        toast(`✅ ${form.nom} modifiée !`);
+        toast(`${form.nom} modifiée`);
       } else {
         const res = await api("POST", "robes", data);
         const newRobe = Array.isArray(res) ? res[0] : { id:`local_${Date.now()}`, ...data };
         setRobes(p => [...p, newRobe]);
-        toast(`✨ ${form.nom} ajoutée !`);
+        toast(`${form.nom} ajoutée au catalogue`);
       }
       setModal(false);
       setEditId(null);
       setForm({ nom:"", categorie:"", tailleMin:"", tailleMax:"", prix:"", caution:"", photoFile:null, photoPreview:null });
     } catch(e) {
       console.error(e);
-      toast("Erreur lors de l'enregistrement");
+      toast("Erreur lors de l'enregistrement","error");
     }
     setSaving(false);
   };
@@ -530,7 +557,7 @@ function Catalogue({ robes, setRobes, toast }) {
     try { await api("DELETE", `robes?id=eq.${r.id}`, null); } catch(e) {}
     setRobes(p => p.filter(x => x.id !== r.id));
     setDetail(null);
-    toast("🗑️ Pièce supprimée");
+    toast("Pièce supprimée");
   };
 
   return (
@@ -545,7 +572,7 @@ function Catalogue({ robes, setRobes, toast }) {
 
       <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         {filtered.map(r => (
-          <div key={r.id} onClick={() => setDetail(r)} style={{ background:T.blanc, borderRadius:16, border:`1.5px solid ${T.vertM}`, overflow:"hidden", cursor:"pointer", boxShadow:"0 2px 10px rgba(58,125,87,.07)" }}>
+          <div key={r.id} onClick={() => setDetail(r)} className="robe-card" style={{ background:T.blanc, borderRadius:16, border:`1.5px solid ${T.vertM}`, overflow:"hidden", cursor:"pointer", boxShadow:"0 2px 10px rgba(58,125,87,.07)" }}>
             <div style={{ height:110, position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               {r.photo_url
                 ? <img src={r.photo_url} alt={r.nom} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
@@ -762,12 +789,12 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
       const upd = { robe_id:form.rid, heure:form.heure, note:form.note };
       try { await api("PATCH",`essayages?id=eq.${editEssId}`,upd); } catch(e) {}
       setEssayages(p=>p.map(x=>x.id===editEssId?{...x,rid:form.rid,heure:form.heure,note:form.note}:x));
-      toast("✅ Essayage modifié !");
+      toast("Essayage modifié");
     } else {
       const ess = { id:`e${Date.now()}`, cid:cl.id, rid:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note };
       try { await api("POST","essayages",{ cliente_id:cl.id, robe_id:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note, user_id:_userId }); } catch(e) {}
       setEssayages(p => [...p, ess]);
-      toast("📅 Essayage enregistré !");
+      toast("Essayage enregistré");
     }
     setModal(false);
     setEditEssId(null);
@@ -945,7 +972,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
     try { await api("POST","reservations",data); } catch(e) {}
     setReservations(p => [...p, local]);
-    toast("🎉 Réservation confirmée !");
+    toast("Réservation confirmée");
     setModal(false);
     setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"" });
   };
@@ -1321,7 +1348,7 @@ export default function App() {
   const [user, setUser] = useState(null); // null = non connecté
   const [authChecked, setAuthChecked] = useState(false);
 
-  const showToast = msg => setToast({ msg, key:Date.now() });
+  const showToast = (msg, type="success") => setToast({ msg, type, key:Date.now() });
 
   useEffect(() => { injectStyles(); }, []);
 
@@ -1470,7 +1497,7 @@ export default function App() {
         </div>
       )}
 
-      {toast && <Toast key={toast.key} msg={toast.msg} onDone={() => setToast(null)}/>}
+      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
 
       {/* Tab bar */}
       <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:T.blanc, borderTop:`1.5px solid ${T.vertM}`, display:"flex", zIndex:200, boxShadow:"0 -4px 20px rgba(30,74,48,.08)" }}>
