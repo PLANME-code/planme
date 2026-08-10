@@ -308,22 +308,25 @@ const Catalogue=({cat,setCat})=>{
 
       {/* Grille 2 colonnes */}
       <div style={{padding:"0 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        {filtered.map(r=>{
-          const {pressed,handlers}=useTap();
-          return (
-            <div key={r.id} onClick={()=>setDetail(r)} {...handlers} style={{background:T.blanc,borderRadius:18,border:`1.5px solid ${T.vertM}`,overflow:"hidden",cursor:"pointer",boxShadow:pressed?"0 1px 4px rgba(58,125,87,0.06)":"0 2px 10px rgba(58,125,87,0.07)",transform:pressed?"scale(0.97)":"scale(1)",transition:"transform .1s, box-shadow .1s"}}>
-              <div style={{height:110,background:`linear-gradient(135deg,${r.shade}33,${r.shade}66)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative"}}>
-                <Avatar color={r.shade} nom={r.nom} size={44}/>
-                <div style={{position:"absolute",top:8,right:8,background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"2px 8px",fontSize:11,fontWeight:900,color:T.vert}}>{r.prix}€</div>
-              </div>
-              <div style={{padding:"10px 11px 12px"}}>
-                <div style={{fontWeight:800,fontSize:12,color:T.encre,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.nom}</div>
-                <div style={{fontSize:10,color:T.gris2,marginTop:2}}>{r.categorie} · T.{r.taille}</div>
-                <div style={{fontSize:10,color:T.gris2,marginTop:1}}>Caution {r.caution}€</div>
-              </div>
+        {filtered.map(r=>(
+          <div key={r.id} onClick={()=>setDetail(r)}
+            style={{background:T.blanc,borderRadius:18,border:`1.5px solid ${T.vertM}`,overflow:"hidden",cursor:"pointer",boxShadow:"0 2px 10px rgba(58,125,87,0.07)",transition:"transform .1s"}}
+            onMouseDown={e=>e.currentTarget.style.transform="scale(0.97)"}
+            onMouseUp={e=>e.currentTarget.style.transform="scale(1)"}
+            onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
+            onTouchStart={e=>e.currentTarget.style.transform="scale(0.97)"}
+            onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+            <div style={{height:110,background:`linear-gradient(135deg,${r.shade}33,${r.shade}66)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative"}}>
+              <Avatar color={r.shade} nom={r.nom} size={44}/>
+              <div style={{position:"absolute",top:8,right:8,background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"2px 8px",fontSize:11,fontWeight:900,color:T.vert}}>{r.prix}€</div>
             </div>
-          );
-        })}
+            <div style={{padding:"10px 11px 12px"}}>
+              <div style={{fontWeight:800,fontSize:12,color:T.encre,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.nom}</div>
+              <div style={{fontSize:10,color:T.gris2,marginTop:2}}>{r.categorie} · T.{r.taille}</div>
+              <div style={{fontSize:10,color:T.gris2,marginTop:1}}>Caution {r.caution}€</div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <FAB onClick={()=>setModal(true)}/>
@@ -770,11 +773,10 @@ const Stats=({res,cat,cli})=>{
           {parMois.map(([k,v],i)=>{
             const isLast=i===parMois.length-1;
             const isSel=k===moisDetail;
-            const {pressed,handlers}=useTap();
             return (
-              <div key={k} onClick={()=>setMoisDetail(isSel?null:k)} {...handlers} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,height:"100%",justifyContent:"flex-end",cursor:"pointer"}}>
+              <div key={k} onClick={()=>setMoisDetail(isSel?null:k)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,height:"100%",justifyContent:"flex-end",cursor:"pointer"}}>
                 <div style={{fontSize:9,fontWeight:700,color:isSel?T.vert:T.gris2}}>{v>0?`${Math.round(v/100)/10}k`:""}</div>
-                <div style={{width:"100%",borderRadius:"6px 6px 0 0",background:isSel?`linear-gradient(180deg,${T.rose},${T.rose}AA)`:isLast?`linear-gradient(180deg,${T.vert},${T.vert2})`:T.vertM,height:`${Math.max(Math.round((v/maxCA)*100),4)}%`,transition:"all .2s",transform:pressed?"scaleY(0.95)":"scaleY(1)",border:isSel?`1.5px solid ${T.rose}`:"none"}}/>
+                <div style={{width:"100%",borderRadius:"6px 6px 0 0",background:isSel?`linear-gradient(180deg,${T.rose},${T.rose}AA)`:isLast?`linear-gradient(180deg,${T.vert},${T.vert2})`:T.vertM,height:`${Math.max(Math.round((v/maxCA)*100),4)}%`,transition:"all .2s",border:isSel?`1.5px solid ${T.rose}`:"none"}}/>
                 <div style={{fontSize:9,fontWeight:700,color:isSel?T.rose:isLast?T.vert:T.gris2}}>{MN[k]||k}</div>
               </div>
             );
