@@ -807,11 +807,11 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
                   </div>
                   <span style={{ background:e.date<TODAY?T.fond:T.vertL, color:e.date<TODAY?T.gris:T.vert, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{e.date<TODAY?"Passé":"À venir"}</span>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"8px", borderRadius:11, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
+                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"5px 10px", borderRadius:8, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
                     ✏️ Modifier
                   </button>
-                  <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("🗑️ Essayage supprimé"); }} style={{ padding:"8px", borderRadius:11, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("Essayage supprimé"); }} style={{ padding:"5px 10px", borderRadius:8, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
                     🗑️ Supprimer
                   </button>
                 </div>
