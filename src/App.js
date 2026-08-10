@@ -22,6 +22,7 @@ const sb = {
     return res.json();
   },
   async insert(table, data) {
+    console.log('INSERT', table, JSON.stringify(data));
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
       method: 'POST',
       headers: {
@@ -32,7 +33,9 @@ const sb = {
       },
       body: JSON.stringify(data)
     });
-    return res.json();
+    const result = await res.json();
+    console.log('INSERT RESULT', JSON.stringify(result));
+    return result;
   },
   async update(table, id, data) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
