@@ -464,10 +464,15 @@ function Catalogue({ robes, setRobes, toast }) {
         const fname = `robe_${Date.now()}.${ext}`;
         const up = await fetch(`${SUPABASE_URL}/storage/v1/object/photos-robes/${fname}`, {
           method:"POST",
-          headers: { apikey:SUPABASE_KEY, Authorization:`Bearer ${SUPABASE_KEY}`, "Content-Type":form.photoFile.type, "x-upsert":"true" },
+          headers: { apikey:SUPABASE_KEY, Authorization:`Bearer ${_token}`, "Content-Type":form.photoFile.type, "x-upsert":"true" },
           body: form.photoFile
         });
-        if (up.ok) photo_url = `${SUPABASE_URL}/storage/v1/object/public/photos-robes/${fname}`;
+        if (up.ok) {
+          photo_url = `${SUPABASE_URL}/storage/v1/object/public/photos-robes/${fname}`;
+        } else {
+          const errTxt = await up.text();
+          console.log('Upload error:', up.status, errTxt);
+        }
       }
 
       const data = { nom:form.nom, categorie:form.categorie, taille, prix:+form.prix, caution:+form.caution, shade, photo_url, user_id:_userId };
