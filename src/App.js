@@ -642,20 +642,65 @@ function CalHeader({ mois, setMois }) {
   );
 }
 
-function CalGrid({ cells, selected, onSelect }) {
+function CalGrid({ cells, selected, onSelect, eventsByDay={} }) {
   const jours = ["L","M","M","J","V","S","D"];
   return (
     <div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, marginBottom:4 }}>
         {jours.map((j,i) => <div key={i} style={{ textAlign:"center", fontSize:9, fontWeight:800, color:T.gris }}>{j}</div>)}
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3 }}>
-        {cells.map((c,i) => !c ? <div key={i}/> : (
-          <div key={i} onClick={() => onSelect(c.ds)} style={{ aspectRatio:1, borderRadius:8, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", background:c.ds===selected?T.vert:c.ds===TODAY?T.vertL:"transparent", border:c.ds===TODAY&&c.ds!==selected?`1.5px solid ${T.vert}`:"none" }}>
-            <span style={{ fontSize:11, fontWeight:600, color:c.ds===selected?"#fff":c.ds===TODAY?T.vert:T.encre }}>{c.d}</span>
-            {c.hasEv && <div style={{ width:4, height:4, borderRadius:"50%", background:c.ds===selected?"rgba(255,255,255,.7)":T.rose }}/>}
-          </div>
-        ))}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
+        {cells.map((cell,i) => {
+          if (!cell) return <div key={i}/>;
+          const isSel = cell.ds===selected;
+          const isToday = cell.ds===TODAY;
+          const evts = eventsByDay[cell.ds] || [];
+          const hasEv = evts.length > 0;
+          return (
+            <div key={i} onClick={() => onSelect(cell.ds)} style={{
+              borderRadius:10,
+              display:"flex",
+              flexDirection:"column",
+              alignItems:"center",
+              justifyContent:"flex-start",
+              cursor:"pointer",
+              background:isSel?T.vert:isToday?T.vertL:"transparent",
+              border:isToday&&!isSel?`1.5px solid ${T.vert}`:"1px solid transparent",
+              padding:"4px 2px 3px",
+              minHeight:48,
+              transition:"background .15s",
+            }}>
+              <span style={{ fontSize:11, fontWeight:isSel||isToday?800:600, color:isSel?"#fff":isToday?T.vert:T.encre, marginBottom:3 }}>{cell.d}</span>
+              {/* Avatars miniatures des clientes/robes */}
+              <div style={{ display:"flex", flexDirection:"column", gap:1.5, width:"100%", alignItems:"center" }}>
+                {evts.slice(0,2).map((ev,j) => (
+                  <div key={j} style={{
+                    width:"90%",
+                    background:isSel?"rgba(255,255,255,.25)":ev.color||T.rose,
+                    borderRadius:4,
+                    padding:"1px 3px",
+                    display:"flex",
+                    alignItems:"center",
+                    gap:2,
+                    overflow:"hidden",
+                  }}>
+                    <div style={{ width:10, height:10, borderRadius:"50%", background:isSel?"rgba(255,255,255,.5)":"rgba(255,255,255,.7)", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:6, fontWeight:900, color:ev.color||T.rose }}>
+                      {ev.initiale||"?"}
+                    </div>
+                    <span style={{ fontSize:7, fontWeight:700, color:isSel?"#fff":"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.3 }}>
+                      {ev.nom||""}
+                    </span>
+                  </div>
+                ))}
+                {evts.length > 2 && (
+                  <div style={{ fontSize:7, fontWeight:800, color:isSel?"rgba(255,255,255,.7)":T.gris }}>
+                    +{evts.length-2}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -690,7 +735,16 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
     <div style={{ padding:"0 16px" }}>
       <div style={{ background:T.blanc, borderRadius:18, border:`1.5px solid ${T.vertM}`, padding:14, marginBottom:12, boxShadow:"0 2px 10px rgba(58,125,87,.07)" }}>
         <CalHeader mois={mois} setMois={setMois}/>
-        <CalGrid cells={cells} selected={sel} onSelect={setSel}/>
+        <CalGrid cells={cells} selected={sel} onSelect={setSel} eventsByDay={useMemo(()=>{
+        const m={};
+        essayages.forEach(e=>{
+          if(!m[e.date]) m[e.date]=[];
+          const cl=clientes.find(x=>x.id===e.cid);
+          const r=robes.find(x=>x.id===e.rid);
+          m[e.date].push({ nom:cl?.nom?.split(' ')[0]||"?", initiale:cl?.nom?.[0]||"?", color:"#B8789E", heure:e.heure });
+        });
+        return m;
+      },[])}/>
       </div>
       <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:10, textTransform:"capitalize" }}>
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
@@ -756,7 +810,20 @@ function Planning({ reservations, robes, clientes }) {
     <div style={{ padding:"0 16px" }}>
       <div style={{ background:T.blanc, borderRadius:18, border:`1.5px solid ${T.vertM}`, padding:14, marginBottom:12, boxShadow:"0 2px 10px rgba(58,125,87,.07)" }}>
         <CalHeader mois={mois} setMois={setMois}/>
-        <CalGrid cells={cells} selected={sel} onSelect={setSel}/>
+        <CalGrid cells={cells} selected={sel} onSelect={setSel} eventsByDay={useMemo(()=>{
+        const m={};
+        reservations.forEach(r=>{
+          const start=new Date(r.debut), end=new Date(r.fin);
+          for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+            const ds=d.toISOString().slice(0,10);
+            if(!m[ds]) m[ds]=[];
+            const cl=clientes.find(x=>x.id===r.cid);
+            const robe=robes.find(x=>x.id===r.rid);
+            m[ds].push({ nom:robe?.nom?.split(' ')[0]||"?", initiale:cl?.nom?.[0]||"?", color:T.vert });
+          }
+        });
+        return m;
+      },[])}/>
       </div>
       <div style={{ background:T.vertL, border:`1.5px solid ${T.vert}33`, borderRadius:14, padding:"10px 14px", marginBottom:12, fontSize:12, color:T.vert, fontWeight:700 }}>
         📅 Planning des réservations · distinct du planning essayages
