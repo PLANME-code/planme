@@ -107,7 +107,7 @@ const auth = {
   }
 };
 
-// ── STYLES GLOBAUX ──────────────────────────────────────────
+// ── STYLES GLOBAUX (v2) ──────────────────────────────────────────
 const injectStyles = () => {
   if (document.getElementById('planme-styles')) return;
   const s = document.createElement('style');
@@ -998,13 +998,21 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
     const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note };
     const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
+    console.log('_userId before insert:', _userId, 'data:', JSON.stringify(data));
     if (editResaId) {
-      try { await api("PATCH",`reservations?id=eq.${editResaId}`,data); } catch(e) {}
+      try { await api("PATCH",`reservations?id=eq.${editResaId}`,data); } catch(e) { console.error('PATCH error:', e); }
       setReservations(p=>p.map(x=>x.id===editResaId?{...x,...local,id:editResaId}:x));
       toast("Réservation modifiée");
     } else {
-      try { await api("POST","reservations",data); } catch(e) {}
-      setReservations(p => [...p, local]);
+      try { 
+        const r = await api("POST","reservations",data); 
+        console.log('POST result:', r);
+        if(Array.isArray(r)&&r[0]) setReservations(p=>[...p,{...r[0],cid:r[0].cliente_id,rid:r[0].robe_id}]);
+        else setReservations(p => [...p, local]);
+      } catch(e) { 
+        console.error('POST error:', e);
+        setReservations(p => [...p, local]);
+      }
       toast("Réservation confirmée");
     }
     setModal(false);
