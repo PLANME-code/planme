@@ -1455,10 +1455,10 @@ export default function App() {
     if (!user) return;
     setLoading(true);
     Promise.all([
-      api("GET","robes?select=*&order=created_at&user_id=eq."+user.userId),
-      api("GET","clientes?select=*&order=nom&user_id=eq."+user.userId),
-      api("GET","reservations?select=*&order=created_at&user_id=eq."+user.userId),
-      api("GET","essayages?select=*&order=date&user_id=eq."+user.userId),
+      api("GET","robes?select=*&order=created_at"),
+      api("GET","clientes?select=*&order=nom"),
+      api("GET","reservations?select=*&order=created_at"),
+      api("GET","essayages?select=*&order=date"),
     ]).then(([r,cl,res,ess]) => {
       if (Array.isArray(r)) setRobes(r);
       if (Array.isArray(cl)) setClientes(cl);
