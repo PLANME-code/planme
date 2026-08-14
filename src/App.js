@@ -864,21 +864,24 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
       <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
         <Field label="Cliente">
           <input style={inputStyle} value={form.nom}
-            onChange={e=>setForm(p=>({...p,nom:e.target.value}))}
-            placeholder="Prénom Nom — tape pour chercher..."/>
-          {form.nom.length>0 && clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase()) && cl.nom.toLowerCase()!==form.nom.toLowerCase()).length>0 && (
-            <div style={{ background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:12, marginTop:6, overflow:"hidden", boxShadow:"0 4px 16px rgba(0,0,0,.1)" }}>
-              {clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase()) && cl.nom.toLowerCase()!==form.nom.toLowerCase()).slice(0,5).map(cl=>(
+            onChange={e=>setForm(p=>({...p,nom:e.target.value,tel:""}))}
+            placeholder="Tape le prénom pour chercher..."/>
+          {form.nom.length>=1 && clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase())&&cl.nom.toLowerCase()!==form.nom.toLowerCase()).length>0 && (
+            <div style={{ background:T.blanc, border:`1.5px solid ${T.vert}`, borderRadius:14, marginTop:6, overflow:"hidden", boxShadow:"0 8px 24px rgba(58,125,87,.15)", animation:"fadeUp .2s ease both" }}>
+              {clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase())&&cl.nom.toLowerCase()!==form.nom.toLowerCase()).slice(0,6).map((cl,i)=>(
                 <div key={cl.id} onClick={()=>setForm(p=>({...p,nom:cl.nom,tel:cl.tel||""}))}
-                  style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", borderBottom:`1px solid ${T.vertM}44` }}
+                  style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", cursor:"pointer", borderBottom:i<5?`1px solid ${T.vertM}44`:"none", transition:"background .15s" }}
                   onMouseEnter={e=>e.currentTarget.style.background=T.vertL}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{ width:32,height:32,borderRadius:10,background:T.vert,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13,flexShrink:0 }}>
+                  <div style={{ width:36,height:36,borderRadius:11,background:`linear-gradient(135deg,${SHADES[i%SHADES.length]},${SHADES[(i+2)%SHADES.length]})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:15,flexShrink:0 }}>
                     {cl.nom[0].toUpperCase()}
                   </div>
-                  <div>
-                    <div style={{ fontWeight:800, fontSize:13, color:T.encre }}>{cl.nom}</div>
-                    {cl.tel && <div style={{ fontSize:11, color:T.gris }}>{cl.tel}</div>}
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl.nom}</div>
+                    {cl.tel && <div style={{ fontSize:11, color:T.gris, marginTop:1 }}>📞 {cl.tel}</div>}
+                  </div>
+                  <div style={{ fontSize:10, color:T.gris, fontWeight:600 }}>
+                    {reservations.filter(r=>r.cid===cl.id).length} résa
                   </div>
                 </div>
               ))}
@@ -1308,6 +1311,189 @@ function Stats({ reservations, robes }) {
   );
 }
 
+// ── CLIENTES ─────────────────────────────────────────────────
+function ClientesTab({ clientes, setClientes, reservations, essayages, robes, toast }) {
+  const [q, setQ] = useState("");
+  const [detail, setDetail] = useState(null);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ nom:"", tel:"" });
+
+  const filtered = clientes.filter(cl =>
+    !q || cl.nom?.toLowerCase().includes(q.toLowerCase()) || cl.tel?.includes(q)
+  );
+
+  const save = async () => {
+    if (!form.nom) return;
+    try {
+      const r = await api("POST","clientes",{ nom:form.nom, tel:form.tel, user_id:_userId });
+      const newCl = Array.isArray(r)&&r[0] ? r[0] : { id:`c${Date.now()}`, ...form };
+      setClientes(p => [...p, newCl]);
+      toast("Cliente ajoutée");
+    } catch(e) { toast("Erreur","error"); }
+    setModal(false);
+    setForm({ nom:"", tel:"" });
+  };
+
+  const deleteCl = async (cl) => {
+    if (!window.confirm(`Supprimer ${cl.nom} ?`)) return;
+    try { await api("DELETE",`clientes?id=eq.${cl.id}`,null); } catch(e) {}
+    setClientes(p => p.filter(x => x.id !== cl.id));
+    setDetail(null);
+    toast("Cliente supprimée");
+  };
+
+  return (
+    <div>
+      <div style={{ padding:"0 16px" }}>
+        <div style={{ position:"relative", marginBottom:10 }}>
+          <Search size={15} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente..." style={{ ...inputStyle, paddingLeft:38 }}/>
+        </div>
+        <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} cliente{filtered.length>1?"s":""}</div>
+      </div>
+
+      <div style={{ padding:"0 16px" }}>
+        {filtered.length === 0 && (
+          <div style={{ background:T.blanc, borderRadius:16, border:`1.5px solid ${T.vertM}`, padding:"32px 16px", textAlign:"center", color:T.gris }}>
+            <div style={{ fontSize:24, marginBottom:8 }}>👥</div>
+            <div style={{ fontSize:13, fontWeight:700 }}>Aucune cliente pour l'instant</div>
+            <div style={{ fontSize:12, marginTop:4 }}>Elles apparaissent automatiquement lors des essayages et réservations</div>
+          </div>
+        )}
+        {filtered.map((cl,idx) => {
+          const clResa = reservations.filter(r => r.cid===cl.id);
+          const clEss = essayages.filter(e => e.cid===cl.id);
+          const caTotal = clResa.reduce((s,r)=>s+(r.prix||0),0);
+          return (
+            <div key={cl.id} onClick={()=>setDetail(cl)}
+              className="tap-card"
+              style={{ background:T.blanc, borderRadius:18, border:`1.5px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 10px rgba(58,125,87,.07)", animation:`fadeUp .4s cubic-bezier(.22,1,.36,1) ${idx*.05}s both` }}>
+              <div style={{ width:48, height:48, borderRadius:15, background:`linear-gradient(135deg,${SHADES[idx%SHADES.length]},${SHADES[(idx+2)%SHADES.length]})`, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900, fontSize:20, flexShrink:0 }}>
+                {cl.nom?.[0]?.toUpperCase()||"?"}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl.nom}</div>
+                {cl.tel && <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{cl.tel}</div>}
+                <div style={{ display:"flex", gap:8, marginTop:4 }}>
+                  {clResa.length>0 && <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:100 }}>{clResa.length} résa</span>}
+                  {clEss.length>0 && <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:100 }}>{clEss.length} essayage{clEss.length>1?"s":""}</span>}
+                  {caTotal>0 && <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:100 }}>{caTotal}€</span>}
+                </div>
+              </div>
+              <ChevronRight size={16} color={T.gris}/>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* FAB */}
+      <button onClick={() => setModal(true)} style={{ position:"fixed", bottom:90, right:20, width:54, height:54, borderRadius:"50%", background:`linear-gradient(135deg,${T.vert},${T.vert2})`, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
+        <Plus size={24}/>
+      </button>
+
+      {/* Modal ajout */}
+      <Modal open={modal} onClose={() => { setModal(false); setForm({ nom:"", tel:"" }); }} title="Nouvelle cliente">
+        <Field label="Nom complet">
+          <input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/>
+        </Field>
+        <Field label="Téléphone">
+          <input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX" type="tel"/>
+        </Field>
+        <BtnPrimary onClick={save} disabled={!form.nom}>Ajouter la cliente ✓</BtnPrimary>
+      </Modal>
+
+      {/* Modal fiche cliente */}
+      <Modal open={!!detail} onClose={()=>setDetail(null)} title={detail?.nom||""}>
+        {detail && (() => {
+          const clResa = reservations.filter(r=>r.cid===detail.id);
+          const clEss = essayages.filter(e=>e.cid===detail.id);
+          const caTotal = clResa.reduce((s,r)=>s+(r.prix||0),0);
+          return (
+            <>
+              {/* Infos */}
+              <div style={{ background:T.fond, borderRadius:16, padding:14, marginBottom:14, display:"flex", gap:14, alignItems:"center" }}>
+                <div style={{ width:56, height:56, borderRadius:17, background:`linear-gradient(135deg,${T.vert},${T.vert2})`, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900, fontSize:24 }}>
+                  {detail.nom?.[0]?.toUpperCase()||"?"}
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:900, fontSize:18, color:T.encre }}>{detail.nom}</div>
+                  {detail.tel && <div style={{ fontSize:13, color:T.gris, marginTop:3 }}>📞 {detail.tel}</div>}
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
+                {[["Réservations",clResa.length,T.vert],["Essayages",clEss.length,T.rose],["CA total",`${caTotal}€`,T.vert]].map(([l,v,col])=>(
+                  <div key={l} style={{ background:T.fond, borderRadius:12, padding:"10px 8px", textAlign:"center", border:`1.5px solid ${T.vertM}` }}>
+                    <div style={{ fontSize:9, fontWeight:800, color:T.gris, textTransform:"uppercase", letterSpacing:".08em", marginBottom:4 }}>{l}</div>
+                    <div style={{ fontWeight:900, fontSize:18, color:col }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Historique réservations */}
+              {clResa.length>0 && (
+                <>
+                  <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:8 }}>Réservations</div>
+                  {clResa.map(r=>{
+                    const robe=robes.find(x=>x.id===r.rid);
+                    return (
+                      <div key={r.id} style={{ background:T.blanc, borderRadius:12, border:`1.5px solid ${T.vertM}`, padding:"10px 12px", marginBottom:8, display:"flex", gap:10, alignItems:"center" }}>
+                        {robe?.photo_url
+                          ? <img src={robe.photo_url} alt={robe.nom} style={{width:36,height:36,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
+                          : <Avatar color={robe?.shade} nom={robe?.nom} size={36}/>
+                        }
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:800, fontSize:12, color:T.encre }}>{robe?.nom||"Pièce inconnue"}</div>
+                          <div style={{ fontSize:11, color:T.gris }}>{new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} → {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</div>
+                        </div>
+                        <span style={{ fontWeight:900, fontSize:13, color:T.vert }}>{r.prix}€</span>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Historique essayages */}
+              {clEss.length>0 && (
+                <>
+                  <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:8, marginTop:clResa.length>0?12:0 }}>Essayages</div>
+                  {clEss.map(e=>{
+                    const robe=robes.find(x=>x.id===e.rid);
+                    return (
+                      <div key={e.id} style={{ background:T.blanc, borderRadius:12, border:`1.5px solid ${T.vertM}`, padding:"10px 12px", marginBottom:8, display:"flex", gap:10, alignItems:"center" }}>
+                        {robe?.photo_url
+                          ? <img src={robe.photo_url} alt={robe.nom} style={{width:36,height:36,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
+                          : <Avatar color={robe?.shade} nom={robe?.nom} size={36}/>
+                        }
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:800, fontSize:12, color:T.encre }}>{robe?.nom||"Pièce inconnue"}</div>
+                          <div style={{ fontSize:11, color:T.gris }}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})} · {e.heure}</div>
+                        </div>
+                        <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 8px", borderRadius:100 }}>Essayage</span>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Actions */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:14 }}>
+                <button onClick={()=>{}} style={{ padding:"11px", borderRadius:13, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+                  ✏️ Modifier
+                </button>
+                <button onClick={()=>deleteCl(detail)} style={{ padding:"11px", borderRadius:13, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
+                  🗑️ Supprimer
+                </button>
+              </div>
+            </>
+          );
+        })()}
+      </Modal>
+    </div>
+  );
+}
+
 // ── ADMIN PANEL ──────────────────────────────────────────────
 function AdminPanel() {
   const [users, setUsers] = useState([]);
@@ -1492,10 +1678,11 @@ export default function App() {
     { id:"essayages", label:"Essayages", Icon:Sparkles },
     { id:"planning",  label:"Planning",  Icon:Calendar },
     { id:"resa",      label:"Résa",      Icon:Check },
+    { id:"clientes",  label:"Clientes",  Icon:TrendingUp },
     { id:"stats",     label:"Stats",     Icon:BarChart3 },
   ];
 
-  const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", stats:"Statistiques" };
+  const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", clientes:"Clientes", stats:"Statistiques" };
 
   const [signingOut, setSigningOut] = useState(false);
 
@@ -1568,6 +1755,7 @@ export default function App() {
             {!seenTabs.resa && <OnboardingBubble tab="resa" onDismiss={()=>dismissOnboarding("resa")}/>}
             <Reservations reservations={reservations} setReservations={setReservations} robes={robes} clientes={clientes} setClientes={setClientes} toast={showToast}/>
           </>}
+          {tab==="clientes" && <ClientesTab clientes={clientes} setClientes={setClientes} reservations={reservations} essayages={essayages} robes={robes} toast={showToast}/>}
           {tab==="stats" && <>
             {!seenTabs.stats && <OnboardingBubble tab="stats" onDismiss={()=>dismissOnboarding("stats")}/>}
             <Stats reservations={reservations} robes={robes}/>
