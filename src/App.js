@@ -862,33 +862,57 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
         <Plus size={24}/>
       </button>
       <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
-        <Field label="Cliente">
-          <input style={inputStyle} value={form.nom}
-            onChange={e=>setForm(p=>({...p,nom:e.target.value,tel:""}))}
-            placeholder="Tape le prénom pour chercher..."/>
-          {form.nom.length>=1 && clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase())&&cl.nom.toLowerCase()!==form.nom.toLowerCase()).length>0 && (
-            <div style={{ background:T.blanc, border:`1.5px solid ${T.vert}`, borderRadius:14, marginTop:6, overflow:"hidden", boxShadow:"0 8px 24px rgba(58,125,87,.15)", animation:"fadeUp .2s ease both" }}>
-              {clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase())&&cl.nom.toLowerCase()!==form.nom.toLowerCase()).slice(0,6).map((cl,i)=>(
-                <div key={cl.id} onClick={()=>setForm(p=>({...p,nom:cl.nom,tel:cl.tel||""}))}
-                  style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", cursor:"pointer", borderBottom:i<5?`1px solid ${T.vertM}44`:"none", transition:"background .15s" }}
-                  onMouseEnter={e=>e.currentTarget.style.background=T.vertL}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{ width:36,height:36,borderRadius:11,background:`linear-gradient(135deg,${SHADES[i%SHADES.length]},${SHADES[(i+2)%SHADES.length]})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:15,flexShrink:0 }}>
-                    {cl.nom[0].toUpperCase()}
+        {/* Toggle nouvelle / existante */}
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, background:T.fond, borderRadius:14, padding:4, marginBottom:14 }}>
+          {[["existante","👥 Cliente existante"],["nouvelle","✨ Nouvelle cliente"]].map(([m,l])=>(
+            <button key={m} onClick={()=>setForm(p=>({...p,modeCliente:m,nom:"",tel:""}))} style={{ padding:"10px 6px", borderRadius:11, border:"none", background:form.modeCliente===m?T.blanc:"transparent", color:form.modeCliente===m?T.encre:T.gris, fontWeight:form.modeCliente===m?800:600, fontSize:12, cursor:"pointer", fontFamily:"inherit", boxShadow:form.modeCliente===m?"0 2px 8px rgba(0,0,0,.08)":"none", transition:"all .2s" }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {form.modeCliente==="existante" ? (
+          <Field label="Rechercher la cliente">
+            <input style={inputStyle} value={form.nom}
+              onChange={e=>setForm(p=>({...p,nom:e.target.value,tel:""}))}
+              placeholder="Tape le prénom..."/>
+            {form.nom.length>=1 && clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase())&&cl.nom.toLowerCase()!==form.nom.toLowerCase()).length>0 && (
+              <div style={{ background:T.blanc, border:`1.5px solid ${T.vert}`, borderRadius:14, marginTop:6, overflow:"hidden", boxShadow:"0 8px 24px rgba(58,125,87,.15)", animation:"fadeUp .2s ease both" }}>
+                {clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase())&&cl.nom.toLowerCase()!==form.nom.toLowerCase()).slice(0,6).map((cl,i)=>(
+                  <div key={cl.id} onClick={()=>setForm(p=>({...p,nom:cl.nom,tel:cl.tel||""}))}
+                    style={{ display:"flex", alignItems:"center", gap:12, padding:"11px 14px", cursor:"pointer", borderBottom:i<5?`1px solid ${T.vertM}44`:"none", transition:"background .15s" }}
+                    onMouseEnter={e=>e.currentTarget.style.background=T.vertL}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div style={{ width:36,height:36,borderRadius:11,background:`linear-gradient(135deg,${SHADES[i%SHADES.length]},${SHADES[(i+2)%SHADES.length]})`,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:15,flexShrink:0 }}>
+                      {cl.nom[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl.nom}</div>
+                      {cl.tel && <div style={{ fontSize:11, color:T.gris, marginTop:1 }}>📞 {cl.tel}</div>}
+                    </div>
+                    <div style={{ fontSize:10, color:T.gris, fontWeight:600 }}>
+                      {reservations.filter(r=>r.cid===cl.id).length} résa
+                    </div>
                   </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl.nom}</div>
-                    {cl.tel && <div style={{ fontSize:11, color:T.gris, marginTop:1 }}>📞 {cl.tel}</div>}
-                  </div>
-                  <div style={{ fontSize:10, color:T.gris, fontWeight:600 }}>
-                    {reservations.filter(r=>r.cid===cl.id).length} résa
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Field>
-        <Field label="Téléphone"><input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/></Field>
+                ))}
+              </div>
+            )}
+            {form.nom && clientes.find(cl=>cl.nom.toLowerCase()===form.nom.toLowerCase()) && (
+              <div style={{ background:T.vertL, border:`1.5px solid ${T.vertM}`, borderRadius:12, padding:"9px 13px", marginTop:6, display:"flex", alignItems:"center", gap:8, fontSize:12, fontWeight:700, color:T.vert }}>
+                <Check size={14}/> {form.nom} sélectionnée
+              </div>
+            )}
+          </Field>
+        ) : (
+          <>
+            <Field label="Nom complet">
+              <input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/>
+            </Field>
+            <Field label="Téléphone">
+              <input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX" type="tel"/>
+            </Field>
+          </>
+        )}
         <Field label="Pièce à essayer">
           {robes.length === 0
             ? <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:12, padding:"12px 14px", fontSize:12, color:"#8B3020", fontWeight:700 }}>
@@ -1027,7 +1051,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     }
     setModal(false);
     setEditResaId(null);
-    setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"" });
+    setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
   };
 
   const statCol = { confirmee:T.vert, enCours:T.rose, terminee:T.gris };
