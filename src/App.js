@@ -51,13 +51,19 @@ const auth = {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message || data.msg);
+    // Détection robuste des erreurs — Supabase renvoie des formats différents selon les versions :
+    // { error: { message } }, { error_description }, { error_code, msg }, { code, msg }...
+    if (!res.ok || !data.access_token || data.error) {
+      const msg = data?.error?.message || data?.error_description || data?.msg || data?.error || "Email ou mot de passe incorrect";
+      throw new Error(msg);
+    }
     _token = data.access_token;
     // Extraire userId depuis le JWT
     let userId = data.user?.id;
     if (!userId && data.access_token) {
       try { userId = JSON.parse(atob(data.access_token.split('.')[1])).sub; } catch(e) {}
     }
+    if (!userId) { _token = SUPABASE_KEY; throw new Error("Connexion impossible — réessaie"); }
     _userId = userId;
     try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId, email })); } catch(e) {}
     return { ...data, user: { ...(data.user||{}), id: userId } };
@@ -786,7 +792,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
     let cl = clientes.find(c => c.nom.toLowerCase()===form.nom.toLowerCase());
     if (!cl || !cl.id || cl.id.startsWith('c')) {
       try {
-        const found = await api("GET",`clientes?nom=eq.${encodeURIComponent(form.nom)}&select=*`);
+        const found = await api("GET",`clientes?nom=eq.${encodeURIComponent(form.nom)}&user_id=eq.${_userId}&select=*`);
         if(Array.isArray(found)&&found[0]) {
           cl = found[0];
           setClientes(p => p.some(x=>x.id===cl.id) ? p : [...p, cl]);
@@ -1718,10 +1724,10 @@ export default function App() {
     if (!user) return;
     setLoading(true);
     Promise.all([
-      api("GET","robes?select=*&order=created_at"),
-      api("GET","clientes?select=*&order=nom"),
-      api("GET","reservations?select=*&order=created_at"),
-      api("GET","essayages?select=*&order=date"),
+      api("GET",`robes?select=*&user_id=eq.${_userId}&order=created_at`),
+      api("GET",`clientes?select=*&user_id=eq.${_userId}&order=nom`),
+      api("GET",`reservations?select=*&user_id=eq.${_userId}&order=created_at`),
+      api("GET",`essayages?select=*&user_id=eq.${_userId}&order=date`),
     ]).then(([r,cl,res,ess]) => {
       if (Array.isArray(r)) setRobes(r);
       if (Array.isArray(cl)) setClientes(cl);
