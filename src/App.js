@@ -189,10 +189,10 @@ const ONBOARDING = {
 };
 
 const T = {
-  vert: "#4FAE7D", vert2: "#3D9468", vertL: "#EAF8F0", vertM: "#D6D0C0",
+  vert: "#4FAE7D", vert2: "#3D9468", vertL: "#EAF8F0", vertM: "#D9EDDD",
   rose: "#E8699F", roseL: "#FFEEF6",
   or: "#A9824C", orL: "#F3ECDD",
-  encre: "#1C1B17", gris: "#8A8578", fond: "#F8F5EF", blanc: "#FFFFFF",
+  encre: "#1C1B17", gris: "#8A8578", fond: "#FDF2F7", blanc: "#FFFFFF",
 };
 const GRAD = `linear-gradient(135deg, #9FE0BE, #FFB8D9)`;
 
@@ -666,10 +666,10 @@ function Catalogue({ robes, setRobes, toast }) {
               }
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-              {[["Taille",detail.taille,T.encre],["Prix",`${detail.prix}€`,T.or],["Caution",`${detail.caution}€`,T.encre]].map(([l,v,col]) => (
-                <div key={l} style={{ background:T.blanc, borderRadius:8, padding:"11px 8px", textAlign:"center", boxShadow:"0 1px 3px rgba(28,27,23,.06)" }}>
+              {[["Taille",detail.taille,T.encre,T.vertL],["Prix",`${detail.prix}€`,T.or,T.roseL],["Caution",`${detail.caution}€`,T.encre,T.vertL]].map(([l,v,col,bg]) => (
+                <div key={l} style={{ background:bg, borderRadius:8, padding:"11px 8px", textAlign:"center" }}>
                   <div style={{ fontSize:9, fontWeight:700, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:5 }}>{l}</div>
-                  <div style={{ fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:19, color:col }}>{v}</div>
+                  <div style={{ fontFamily:"'Manrope',sans-serif", fontWeight:800, fontSize:19, color:col }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -1480,9 +1480,6 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
             <>
               {/* Infos */}
               <div style={{ background:T.fond, borderRadius:10, padding:14, marginBottom:14, display:"flex", gap:14, alignItems:"center" }}>
-                <div style={{ width:56, height:56, borderRadius:10, background:`linear-gradient(135deg,${T.vert},${T.rose})`, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900, fontSize:24 }}>
-                  {detail.nom?.[0]?.toUpperCase()||"?"}
-                </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:900, fontSize:18, color:T.encre }}>{detail.nom}</div>
                   {detail.tel && <div style={{ fontSize:13, color:T.gris, marginTop:3 }}>📞 {detail.tel}</div>}
@@ -1491,10 +1488,10 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
 
               {/* Stats */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-                {[["Réservations",clResa.length,T.vert],["Essayages",clEss.length,T.rose],["CA total",`${caTotal}€`,T.or]].map(([l,v,col])=>(
-                  <div key={l} style={{ background:T.blanc, borderRadius:8, padding:"11px 8px", textAlign:"center", boxShadow:"0 1px 3px rgba(28,27,23,.06)" }}>
+                {[["Réservations",clResa.length,T.vert,T.vertL],["Essayages",clEss.length,T.rose,T.roseL],["CA total",`${caTotal}€`,T.or,T.vertL]].map(([l,v,col,bg])=>(
+                  <div key={l} style={{ background:bg, borderRadius:8, padding:"11px 8px", textAlign:"center" }}>
                     <div style={{ fontSize:9, fontWeight:700, color:T.gris, textTransform:"uppercase", letterSpacing:".08em", marginBottom:5 }}>{l}</div>
-                    <div style={{ fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:19, color:col }}>{v}</div>
+                    <div style={{ fontFamily:"'Manrope',sans-serif", fontWeight:800, fontSize:19, color:col }}>{v}</div>
                   </div>
                 ))}
               </div>
