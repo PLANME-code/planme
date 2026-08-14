@@ -851,10 +851,27 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
       </button>
       <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
         <Field label="Cliente">
-          <input list="clientes-list" style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom ou premières lettres..."/>
-          <datalist id="clientes-list">
-            {clientes.map(cl=><option key={cl.id} value={cl.nom}>{cl.tel}</option>)}
-          </datalist>
+          <input style={inputStyle} value={form.nom}
+            onChange={e=>setForm(p=>({...p,nom:e.target.value}))}
+            placeholder="Prénom Nom — tape pour chercher..."/>
+          {form.nom.length>0 && clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase()) && cl.nom.toLowerCase()!==form.nom.toLowerCase()).length>0 && (
+            <div style={{ background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:12, marginTop:6, overflow:"hidden", boxShadow:"0 4px 16px rgba(0,0,0,.1)" }}>
+              {clientes.filter(cl=>cl.nom.toLowerCase().includes(form.nom.toLowerCase()) && cl.nom.toLowerCase()!==form.nom.toLowerCase()).slice(0,5).map(cl=>(
+                <div key={cl.id} onClick={()=>setForm(p=>({...p,nom:cl.nom,tel:cl.tel||""}))}
+                  style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", cursor:"pointer", borderBottom:`1px solid ${T.vertM}44` }}
+                  onMouseEnter={e=>e.currentTarget.style.background=T.vertL}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{ width:32,height:32,borderRadius:10,background:T.vert,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13,flexShrink:0 }}>
+                    {cl.nom[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:13, color:T.encre }}>{cl.nom}</div>
+                    {cl.tel && <div style={{ fontSize:11, color:T.gris }}>{cl.tel}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Field>
         <Field label="Téléphone"><input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/></Field>
         <Field label="Pièce à essayer">
