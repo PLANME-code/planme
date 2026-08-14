@@ -53,9 +53,14 @@ const auth = {
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || data.msg);
     _token = data.access_token;
-    _userId = data.user?.id;
-    try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId:data.user?.id, email })); } catch(e) {}
-    return data;
+    // Extraire userId depuis le JWT
+    let userId = data.user?.id;
+    if (!userId && data.access_token) {
+      try { userId = JSON.parse(atob(data.access_token.split('.')[1])).sub; } catch(e) {}
+    }
+    _userId = userId;
+    try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId, email })); } catch(e) {}
+    return { ...data, user: { ...(data.user||{}), id: userId } };
   },
   async refresh() {
     try {
