@@ -189,14 +189,14 @@ const ONBOARDING = {
 };
 
 const T = {
-  vert: "#4FAE7D", vert2: "#3D9468", vertL: "#EAF8F0", vertM: "#D9EDDD",
-  rose: "#E8699F", roseL: "#FFEEF6",
-  or: "#A9824C", orL: "#F3ECDD",
-  encre: "#1C1B17", gris: "#8A8578", fond: "#FAF6ED", blanc: "#FFFFFF",
+  vert: "#3DAE72", vert2: "#2E9460", vertL: "#EAF8F0", vertM: "#EBEBEB",
+  rose: "#F2478E", roseL: "#FFEBF3",
+  or: "#B8863E", orL: "#FBF3E4",
+  encre: "#161615", gris: "#8E8E8E", fond: "#FAFAFA", blanc: "#FFFFFF",
 };
-const GRAD = `linear-gradient(135deg, #9FE0BE, #FFB8D9)`;
+const GRAD = `linear-gradient(135deg, ${T.vert}, ${T.rose})`;
 
-const SHADES = ["#4FAE7D","#3D9468","#E8699F","#D45489","#5C7C68","#A9824C","#F79AC0","#4A4436"];
+const SHADES = ["#3DAE72","#2E9460","#F2478E","#D63A78","#5C7C68","#B8863E","#F786B4","#4A4436"];
 
 const TODAY = new Date().toISOString().slice(0,10);
 
@@ -501,7 +501,7 @@ function Field({ label, children }) {
   );
 }
 
-const inputStyle = { width:"100%", background:T.fond, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"11px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+const inputStyle = { width:"100%", background:T.fond, border:"none", borderRadius:10, padding:"12px 16px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
 
 function BtnPrimary({ onClick, disabled, children }) {
   return (
@@ -586,34 +586,33 @@ function Catalogue({ robes, setRobes, toast }) {
   return (
     <div>
       <div style={{ padding:"0 16px" }}>
-        <div style={{ position:"relative", marginBottom:12 }}>
-          <Search size={15} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }} />
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une pièce..." style={{ ...inputStyle, paddingLeft:38 }} />
+        <div style={{ position:"relative", marginBottom:14 }}>
+          <Search size={16} style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }} />
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une pièce..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }} />
         </div>
-        <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} pièce{filtered.length>1?"s":""}</div>
+        <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:12 }}>{filtered.length} pièce{filtered.length>1?"s":""}</div>
       </div>
 
-      <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+      <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
         {filtered.map((r,i) => (
-          <div key={r.id} onClick={() => setDetail(r)} className="robe-card card-anim" style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, overflow:"hidden", cursor:"pointer", boxShadow:"0 2px 10px rgba(31,58,46,.07)", animationDelay:`${Math.min(i*40,320)}ms` }}>
-            <div style={{ height:110, position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div key={r.id} onClick={() => setDetail(r)} className="robe-card card-anim" style={{ background:T.blanc, borderRadius:14, overflow:"hidden", cursor:"pointer", boxShadow:"0 1px 3px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.05)", animationDelay:`${Math.min(i*40,320)}ms` }}>
+            <div style={{ aspectRatio:"1", position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               {r.photo_url
                 ? <img src={r.photo_url} alt={r.nom} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
                 : <Avatar color={r.shade} nom={r.nom} size={44} />
               }
-              <div style={{ position:"absolute", bottom:8, left:8, background:"rgba(255,255,255,.9)", borderRadius:8, padding:"2px 8px", fontSize:11, fontWeight:900, color:T.vert }}>{r.prix}€</div>
+              <div style={{ position:"absolute", bottom:8, left:8, background:GRAD, borderRadius:100, padding:"3px 10px", fontSize:11, fontWeight:800, color:"#fff", boxShadow:"0 2px 8px rgba(0,0,0,.15)" }}>{r.prix}€</div>
             </div>
-            <div style={{ padding:"9px 10px 11px" }}>
-              <div style={{ fontWeight:800, fontSize:12, color:T.encre, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.nom}</div>
-              <div style={{ fontSize:10, color:T.gris, marginTop:2 }}>{r.categorie} · T.{r.taille}</div>
-              <div style={{ fontSize:10, color:T.gris }}>Caution {r.caution}€</div>
+            <div style={{ padding:"10px 11px 12px" }}>
+              <div style={{ fontWeight:800, fontSize:13, color:T.encre, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.nom}</div>
+              <div style={{ fontSize:11, color:T.gris, marginTop:3 }}>{r.categorie} · T.{r.taille}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* FAB */}
-      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${T.vert},${T.rose})`, color:"#fff", border:"none", fontSize:28, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
+      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:GRAD, color:"#fff", border:"none", fontSize:28, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
         <Plus size={24} />
       </button>
 
@@ -1083,7 +1082,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       <div style={{ padding:"0 16px" }}>
         <div style={{ position:"relative", marginBottom:12 }}>
           <Search size={15} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }}/>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente..." style={{ ...inputStyle, paddingLeft:38 }}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }}/>
         </div>
         <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} réservation{filtered.length>1?"s":""}</div>
       </div>
@@ -1418,7 +1417,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
       <div style={{ padding:"0 16px" }}>
         <div style={{ position:"relative", marginBottom:10 }}>
           <Search size={15} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }}/>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente..." style={{ ...inputStyle, paddingLeft:38 }}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }}/>
         </div>
         <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} cliente{filtered.length>1?"s":""}</div>
       </div>
@@ -1775,21 +1774,21 @@ export default function App() {
       )}
 
       {/* Header */}
-      <div style={{ background:T.roseL, padding:"16px 18px 13px", position:"sticky", top:0, zIndex:100, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.rose}33` }}>
+      <div style={{ background:T.blanc, padding:"14px 18px 12px", position:"sticky", top:0, zIndex:100, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.vertM}` }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:1 }}>
           <span style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:23, color:T.encre, letterSpacing:-0.3 }}>Plan</span>
           <span style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:23, color:T.vert, letterSpacing:-0.3 }}>me</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ borderLeft:`1px solid ${T.rose}55`, paddingLeft:12, marginRight:2 }}>
+          <div style={{ borderLeft:`1px solid ${T.vertM}`, paddingLeft:12, marginRight:2 }}>
             <span style={{ fontSize:10, fontWeight:700, color:T.gris, letterSpacing:".1em", textTransform:"uppercase" }}>{titles[tab]}</span>
           </div>
           {user?.email==="nafissa.tizaoui@hotmail.com" && (
-            <button onClick={()=>setTab("admin")} title="Admin" style={{ width:34, height:34, borderRadius:8, background:tab==="admin"?T.vert:T.blanc, border:`1px solid ${tab==="admin"?T.vert:T.rose}55`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <button onClick={()=>setTab("admin")} title="Admin" style={{ width:34, height:34, borderRadius:8, background:tab==="admin"?T.vert:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <Settings size={15} color={tab==="admin"?"#fff":T.encre}/>
             </button>
           )}
-          <button onClick={handleSignOut} title="Se déconnecter" style={{ width:34, height:34, borderRadius:8, background:T.blanc, border:`1px solid ${T.rose}55`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <button onClick={handleSignOut} title="Se déconnecter" style={{ width:34, height:34, borderRadius:8, background:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <LogOut size={15} color={T.encre}/>
           </button>
         </div>
