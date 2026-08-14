@@ -784,10 +784,17 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
   const save = async () => {
     if (!form.nom || !form.rid) return;
     let cl = clientes.find(c => c.nom.toLowerCase()===form.nom.toLowerCase());
-    if (!cl) {
-      cl = { id:`c${Date.now()}`, nom:form.nom, tel:form.tel };
-      try { const r = await api("POST","clientes",{nom:form.nom,tel:form.tel,user_id:_userId}); if(Array.isArray(r)&&r[0]) cl=r[0]; } catch(e) {}
-      setClientes(p => [...p, cl]);
+    if (!cl || !cl.id || cl.id.startsWith('c')) {
+      try {
+        const found = await api("GET",`clientes?nom=eq.${encodeURIComponent(form.nom)}&select=*`);
+        if(Array.isArray(found)&&found[0]) {
+          cl = found[0];
+          setClientes(p => p.some(x=>x.id===cl.id) ? p : [...p, cl]);
+        } else {
+          const r = await api("POST","clientes",{nom:form.nom,tel:form.tel,user_id:_userId});
+          if(Array.isArray(r)&&r[0]) { cl=r[0]; setClientes(p=>[...p,cl]); }
+        }
+      } catch(e) { console.error('Cliente error:', e); }
     }
     if (editEssId) {
       // Mode modification
