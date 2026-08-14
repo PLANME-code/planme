@@ -1003,7 +1003,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       setClientes(p => [...p, cl]);
     }
     const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
-    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note };
+    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
     const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
     console.log('_userId before insert:', _userId, 'data:', JSON.stringify(data));
     if (editResaId) {
