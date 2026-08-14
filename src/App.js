@@ -189,10 +189,10 @@ const ONBOARDING = {
 };
 
 const T = {
-  vert: "#3DAE72", vert2: "#2E9460", vertL: "#EAF8F0", vertM: "#EBEBEB",
-  rose: "#F2478E", roseL: "#FFEBF3",
+  vert: "#3DAE72", vert2: "#2E9460", vertL: "#EAF8F0", vertM: "#EFE8DC",
+  rose: "#F2478E", rose2: "#D9276F", roseL: "#FFEBF3",
   or: "#B8863E", orL: "#FBF3E4",
-  encre: "#161615", gris: "#8E8E8E", fond: "#FAFAFA", blanc: "#FFFFFF",
+  encre: "#211F1A", gris: "#948C7E", fond: "#F5F3EE", blanc: "#FFFFFF",
 };
 const GRAD = `linear-gradient(135deg, ${T.vert}, ${T.rose})`;
 
@@ -387,7 +387,7 @@ function AuthScreen({ onAuth }) {
         {success && <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.vert }}>{success}</div>}
 
         {/* Bouton */}
-        <button onClick={submit} disabled={loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)} style={{ width:"100%", background:loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)?T.gris:`linear-gradient(135deg,${T.vert},${T.rose})`, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:"pointer", fontFamily:"inherit", boxShadow:`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+        <button onClick={submit} disabled={loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)} style={{ width:"100%", background:loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)?T.gris:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:"pointer", fontFamily:"inherit", boxShadow:`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
           {loading && <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid rgba(255,255,255,.3)", borderTop:"2.5px solid #fff", borderRadius:"50%", animation:"spin .7s linear infinite" }}/>}
           {loading ? "Connexion en cours..." : mode==="login" ? "Se connecter →" : mode==="signup" ? "Créer mon compte →" : "Envoyer le lien →"}
         </button>
@@ -456,7 +456,7 @@ function Toast({ msg, type="success", onDone }) {
       zIndex:999, fontFamily:"inherit", whiteSpace:"nowrap",
 
     }}>
-      <div className={visible?"pop-check":""} style={{ width:22, height:22, borderRadius:"50%", background:type==="success"?GRAD:col, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div className={visible?"pop-check":""} style={{ width:22, height:22, borderRadius:"50%", background:type==="success"?T.vert:col, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
         {type==="success" && <Check size={13} color="#fff" strokeWidth={3}/>}
       </div>
       <span style={{ fontWeight:800, fontSize:13, color:T.encre }}>{msg}</span>
@@ -466,7 +466,7 @@ function Toast({ msg, type="success", onDone }) {
 
 function Avatar({ color, nom, size = 42 }) {
   return (
-    <div style={{ width:size, height:size, borderRadius:size*.3, padding:2.5, background:GRAD, flexShrink:0, boxShadow:"0 2px 8px rgba(255,79,148,.25)" }}>
+    <div style={{ width:size, height:size, borderRadius:size*.3, padding:2.5, background:T.vert, flexShrink:0, boxShadow:"0 2px 8px rgba(255,79,148,.25)" }}>
       <div style={{ width:"100%", height:"100%", borderRadius:size*.24, background:color||T.vert, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"'Manrope',sans-serif", fontWeight:700, fontSize:size*.34, letterSpacing:"-.02em" }}>
         {nom?.[0]?.toUpperCase() || "?"}
       </div>
@@ -505,7 +505,7 @@ const inputStyle = { width:"100%", background:T.fond, border:"none", borderRadiu
 
 function BtnPrimary({ onClick, disabled, children }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{ width:"100%", background:disabled?T.gris:`linear-gradient(135deg,${T.vert},${T.rose})`, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:disabled?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:disabled?"none":`0 4px 16px ${T.vert}44` }}>
+    <button onClick={onClick} disabled={disabled} style={{ width:"100%", background:disabled?T.gris:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:disabled?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:disabled?"none":`0 4px 16px ${T.vert}44` }}>
       {children}
     </button>
   );
@@ -601,7 +601,7 @@ function Catalogue({ robes, setRobes, toast }) {
                 ? <img src={r.photo_url} alt={r.nom} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
                 : <Avatar color={r.shade} nom={r.nom} size={44} />
               }
-              <div style={{ position:"absolute", bottom:8, left:8, background:GRAD, borderRadius:100, padding:"3px 10px", fontSize:11, fontWeight:800, color:"#fff", boxShadow:"0 2px 8px rgba(0,0,0,.15)" }}>{r.prix}€</div>
+              <div style={{ position:"absolute", bottom:8, left:8, background:T.rose, borderRadius:100, padding:"3px 10px", fontSize:11, fontWeight:800, color:"#fff", boxShadow:"0 2px 8px rgba(0,0,0,.15)" }}>{r.prix}€</div>
             </div>
             <div style={{ padding:"10px 11px 12px" }}>
               <div style={{ fontWeight:800, fontSize:13, color:T.encre, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.nom}</div>
@@ -612,7 +612,7 @@ function Catalogue({ robes, setRobes, toast }) {
       </div>
 
       {/* FAB */}
-      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:GRAD, color:"#fff", border:"none", fontSize:28, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
+      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", fontSize:28, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
         <Plus size={24} />
       </button>
 
@@ -874,7 +874,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
             );
           })
       }
-      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${T.vert},${T.rose})`, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
+      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
         <Plus size={24}/>
       </button>
       <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
@@ -1006,7 +1006,7 @@ function Planning({ reservations, robes, clientes }) {
                     <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
                     <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{robe?.nom}</div>
                   </div>
-                  <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
+                  <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
                 </div>
                 <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:8, padding:"9px 12px", fontSize:11, color:"#8B3020", fontWeight:600 }}>
                   🚫 {robe?.nom} grisée du {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} au {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} — double réservation impossible
@@ -1074,7 +1074,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
   };
 
-  const statCol = { confirmee:T.vert, enCours:T.rose, terminee:T.gris };
+  const statCol = { confirmee:T.rose, enCours:T.vert, terminee:T.gris };
   const statLbl = { confirmee:"Confirmée", enCours:"En cours", terminee:"Terminée" };
 
   return (
@@ -1117,7 +1117,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
         })}
       </div>
 
-      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${T.vert},${T.rose})`, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
+      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
         <Plus size={24}/>
       </button>
 
@@ -1444,7 +1444,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
                 <div style={{ display:"flex", gap:8, marginTop:4 }}>
                   {clResa.length>0 && <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:100 }}>{clResa.length} résa</span>}
                   {clEss.length>0 && <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:100 }}>{clEss.length} essayage{clEss.length>1?"s":""}</span>}
-                  {caTotal>0 && <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:100 }}>{caTotal}€</span>}
+                  {caTotal>0 && <span style={{ background:T.orL, color:T.or, fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:100 }}>{caTotal}€</span>}
                 </div>
               </div>
               <ChevronRight size={16} color={T.gris}/>
@@ -1454,7 +1454,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
       </div>
 
       {/* FAB */}
-      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:`linear-gradient(135deg,${T.vert},${T.rose})`, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.vert}55`, zIndex:150 }}>
+      <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
         <Plus size={24}/>
       </button>
 
@@ -1615,7 +1615,7 @@ function AdminPanel() {
               <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:4 }}>{u.email}</div>
               <div style={{ fontSize:11, color:T.gris, marginBottom:10 }}>Demande le {new Date(u.created_at).toLocaleDateString("fr-FR")} · {u.note}</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                <button onClick={()=>approve(u.email)} style={{ padding:"9px", borderRadius:8, background:`linear-gradient(135deg,${T.vert},${T.rose})`, color:"#fff", border:"none", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                <button onClick={()=>approve(u.email)} style={{ padding:"9px", borderRadius:8, background:T.rose, color:"#fff", border:"none", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
                   ✅ Approuver
                 </button>
                 <button onClick={()=>revoke(u.email)} style={{ padding:"9px", borderRadius:8, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
@@ -1764,7 +1764,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily:"'Manrope',sans-serif", background:T.fond, minHeight:"100vh", maxWidth:430, margin:"0 auto", position:"relative", paddingBottom:80 }}>
+    <div style={{ fontFamily:"'Manrope',sans-serif", background:T.blanc, minHeight:"100vh", maxWidth:430, margin:"0 auto", position:"relative", paddingBottom:80 }}>
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       {signingOut && (
         <div style={{ position:"fixed", inset:0, background:T.roseL, zIndex:9999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", animation:"fadeIn .4s ease both" }}>
@@ -1832,8 +1832,8 @@ export default function App() {
       {/* Tab bar */}
       <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:T.blanc, borderTop:`1px solid ${T.vertM}`, display:"flex", zIndex:200 }}>
         {TABS.map(({ id, label, Icon }) => (
-          <button key={id} onClick={() => setTab(id)} style={{ flex:1, padding:"10px 4px 14px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, background:"none", border:"none", cursor:"pointer", color:tab===id?T.vert:T.gris, fontFamily:"inherit", position:"relative", transition:"color .2s" }}>
-            {tab===id && <div style={{ position:"absolute", top:0, left:"28%", right:"28%", height:3, borderRadius:"0 0 3px 3px", background:GRAD, animation:"popCheck .3s cubic-bezier(.34,1.56,.64,1) both" }}/>}
+          <button key={id} onClick={() => setTab(id)} style={{ flex:1, padding:"10px 4px 14px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, background:"none", border:"none", cursor:"pointer", color:tab===id?T.rose:T.gris, fontFamily:"inherit", position:"relative", transition:"color .2s" }}>
+            {tab===id && <div style={{ position:"absolute", top:0, left:"28%", right:"28%", height:3, borderRadius:"0 0 3px 3px", background:T.rose, animation:"popCheck .3s cubic-bezier(.34,1.56,.64,1) both" }}/>}
             <Icon size={18} strokeWidth={tab===id?2.4:1.8} style={{ transition:"transform .2s cubic-bezier(.34,1.56,.64,1)", transform:tab===id?"scale(1.12)":"scale(1)" }}/>
             <span style={{ fontSize:9.5, fontWeight:tab===id?800:600, letterSpacing:".02em" }}>{label}</span>
           </button>
