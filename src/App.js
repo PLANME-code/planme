@@ -192,7 +192,7 @@ const T = {
   vert: "#4FAE7D", vert2: "#3D9468", vertL: "#EAF8F0", vertM: "#D9EDDD",
   rose: "#E8699F", roseL: "#FFEEF6",
   or: "#A9824C", orL: "#F3ECDD",
-  encre: "#1C1B17", gris: "#8A8578", fond: "#FDF2F7", blanc: "#FFFFFF",
+  encre: "#1C1B17", gris: "#8A8578", fond: "#FAF6ED", blanc: "#FFFFFF",
 };
 const GRAD = `linear-gradient(135deg, #9FE0BE, #FFB8D9)`;
 
@@ -1775,21 +1775,21 @@ export default function App() {
       )}
 
       {/* Header */}
-      <div style={{ background:T.blanc, padding:"16px 18px 13px", position:"sticky", top:0, zIndex:100, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.vertM}` }}>
+      <div style={{ background:T.roseL, padding:"16px 18px 13px", position:"sticky", top:0, zIndex:100, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.rose}33` }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:1 }}>
           <span style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:23, color:T.encre, letterSpacing:-0.3 }}>Plan</span>
           <span style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:23, color:T.vert, letterSpacing:-0.3 }}>me</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ borderLeft:`1px solid ${T.vertM}`, paddingLeft:12, marginRight:2 }}>
+          <div style={{ borderLeft:`1px solid ${T.rose}55`, paddingLeft:12, marginRight:2 }}>
             <span style={{ fontSize:10, fontWeight:700, color:T.gris, letterSpacing:".1em", textTransform:"uppercase" }}>{titles[tab]}</span>
           </div>
           {user?.email==="nafissa.tizaoui@hotmail.com" && (
-            <button onClick={()=>setTab("admin")} title="Admin" style={{ width:34, height:34, borderRadius:8, background:tab==="admin"?T.vert:"transparent", border:`1px solid ${tab==="admin"?T.vert:T.vertM}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <button onClick={()=>setTab("admin")} title="Admin" style={{ width:34, height:34, borderRadius:8, background:tab==="admin"?T.vert:T.blanc, border:`1px solid ${tab==="admin"?T.vert:T.rose}55`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               <Settings size={15} color={tab==="admin"?"#fff":T.encre}/>
             </button>
           )}
-          <button onClick={handleSignOut} title="Se déconnecter" style={{ width:34, height:34, borderRadius:8, background:"transparent", border:`1px solid ${T.vertM}`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <button onClick={handleSignOut} title="Se déconnecter" style={{ width:34, height:34, borderRadius:8, background:T.blanc, border:`1px solid ${T.rose}55`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <LogOut size={15} color={T.encre}/>
           </button>
         </div>
