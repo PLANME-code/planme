@@ -1011,6 +1011,11 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [editResaId, setEditResaId] = useState(null);
   const [q, setQ] = useState("");
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"" });
+  const [showSuggest, setShowSuggest] = useState(false);
+
+  const suggestions = form.nom.trim().length>0
+    ? clientes.filter(c => c.nom.toLowerCase().includes(form.nom.trim().toLowerCase())).slice(0,6)
+    : [];
 
   const filtered = reservations.filter(r => {
     const cl = clientes.find(x=>x.id===r.cid);
@@ -1178,8 +1183,36 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       {/* Modal nouvelle réservation */}
       <Modal open={modal} onClose={() => setModal(false)} title="Nouvelle réservation">
         <div style={{ background:T.vertL, borderRadius:12, padding:"9px 13px", marginBottom:14, fontSize:12, color:T.vert, fontWeight:700 }}>✨ Suite à un essayage ? La cliente sera retrouvée automatiquement</div>
-        <Field label="Cliente"><input style={inputStyle} value={form.nom} onChange={e=>setForm(p=>({...p,nom:e.target.value}))} placeholder="Prénom Nom"/></Field>
-        <Field label="Téléphone"><input style={inputStyle} value={form.tel} onChange={e=>setForm(p=>({...p,tel:e.target.value}))} placeholder="06 XX XX XX XX"/></Field>
+        <Field label="Cliente">
+          <div style={{ position:"relative" }}>
+            <input
+              style={inputStyle}
+              value={form.nom}
+              onChange={e=>{ setForm(p=>({...p,nom:e.target.value})); setShowSuggest(true); }}
+              onFocus={()=>setShowSuggest(true)}
+              onBlur={()=>setTimeout(()=>setShowSuggest(false),150)}
+              placeholder="Prénom Nom"
+              autoComplete="off"
+            />
+            {showSuggest && suggestions.length>0 && (
+              <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, right:0, background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:12, boxShadow:"0 8px 24px rgba(30,74,48,.12)", zIndex:50, maxHeight:200, overflowY:"auto" }}>
+                {suggestions.map(c => (
+                  <div
+                    key={c.id}
+                    onMouseDown={()=>{ setForm(p=>({...p,nom:c.nom,tel:c.tel||p.tel})); setShowSuggest(false); }}
+                    style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", cursor:"pointer", borderBottom:`1px solid ${T.vertM}44` }}
+                  >
+                    <Avatar color={T.vert} nom={c.nom} size={28}/>
+                    <div>
+                      <div style={{ fontWeight:800, fontSize:13, color:T.encre }}>{c.nom}</div>
+                      {c.tel && <div style={{ fontSize:11, color:T.gris }}>{c.tel}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Field>
         <Field label="Pièce choisie">
           <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
             {robes.map(r => (
