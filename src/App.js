@@ -456,7 +456,7 @@ function Toast({ msg, type="success", onDone }) {
 
 function Avatar({ color, nom, size = 42 }) {
   return (
-    <div style={{ width:size, height:size, borderRadius:"50%", background:color||T.vert, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:size*.4, flexShrink:0, boxShadow:"0 2px 6px rgba(28,27,23,.15)" }}>
+    <div style={{ width:size, height:size, borderRadius:size*.3, background:color||T.vert, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"'Manrope',sans-serif", fontWeight:700, fontSize:size*.36, letterSpacing:"-.02em", flexShrink:0, boxShadow:"0 2px 6px rgba(28,27,23,.15)" }}>
       {nom?.[0]?.toUpperCase() || "?"}
     </div>
   );
@@ -1431,7 +1431,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
             <div key={cl.id} onClick={()=>setDetail(cl)}
               className="tap-card"
               style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)", animation:`fadeUp .4s cubic-bezier(.22,1,.36,1) ${idx*.05}s both` }}>
-              <div style={{ width:48, height:48, borderRadius:"50%", background:`linear-gradient(135deg,${SHADES[idx%SHADES.length]},${SHADES[(idx+2)%SHADES.length]})`, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:19, flexShrink:0, boxShadow:"0 2px 6px rgba(28,27,23,.15)" }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:`linear-gradient(135deg,${SHADES[idx%SHADES.length]},${SHADES[(idx+2)%SHADES.length]})`, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"'Manrope',sans-serif", fontWeight:700, fontSize:18, letterSpacing:"-.02em", flexShrink:0, boxShadow:"0 2px 6px rgba(28,27,23,.15)" }}>
                 {cl.nom?.[0]?.toUpperCase()||"?"}
               </div>
               <div style={{ flex:1 }}>
