@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, ChevronLeft, ChevronRight, Clock, TrendingUp, AlertCircle, Settings, LogOut } from "lucide-react";
+import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, ChevronLeft, ChevronRight, Clock, TrendingUp, AlertCircle, Settings, LogOut, Edit3, Trash2 } from "lucide-react";
 
 const SUPABASE_URL = "https://drgiyafkcmfydkabctxa.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2l5YWZrY21meWRrYWJjdHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNTA5MDAsImV4cCI6MjEwMTkyNjkwMH0.Ak3tEWz5PL9DRhGKOswtqujW7dHM3-x79hd8ItteIQo";
@@ -309,7 +309,7 @@ function AuthScreen({ onAuth }) {
     setLoading(false);
   };
 
-  const inp = { width:"100%", background:T.fond, border:`1.5px solid ${T.vertM}`, borderRadius:8, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+  const inp = { width:"100%", background:T.fond, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
 
   return (
     <div style={{ minHeight:"100vh", background:T.vert, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit", opacity:exiting?0:1, transition:"opacity .5s ease" }}>
@@ -376,7 +376,7 @@ function AuthScreen({ onAuth }) {
 
         {/* Messages */}
         {error && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>}
-        {success && <div style={{ background:T.vertL, border:`1.5px solid ${T.vertM}`, borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.vert }}>{success}</div>}
+        {success && <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.vert }}>{success}</div>}
 
         {/* Bouton */}
         <button onClick={submit} disabled={loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)} style={{ width:"100%", background:loading||!email||(mode!=="forgot"&&!password)||(mode==="signup"&&!pwStrong)?T.gris:`linear-gradient(135deg,${T.vert},${T.vert2})`, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:"pointer", fontFamily:"inherit", boxShadow:`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
@@ -456,7 +456,7 @@ function Toast({ msg, type="success", onDone }) {
 
 function Avatar({ color, nom, size = 42 }) {
   return (
-    <div style={{ width:size, height:size, borderRadius:size*.28, background:color||T.vert, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900, fontSize:size*.38, flexShrink:0 }}>
+    <div style={{ width:size, height:size, borderRadius:"50%", background:color||T.vert, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:size*.4, flexShrink:0, boxShadow:"0 2px 6px rgba(28,27,23,.15)" }}>
       {nom?.[0]?.toUpperCase() || "?"}
     </div>
   );
@@ -489,7 +489,7 @@ function Field({ label, children }) {
   );
 }
 
-const inputStyle = { width:"100%", background:T.fond, border:`1.5px solid ${T.vertM}`, borderRadius:8, padding:"11px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+const inputStyle = { width:"100%", background:T.fond, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"11px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
 
 function BtnPrimary({ onClick, disabled, children }) {
   return (
@@ -582,8 +582,8 @@ function Catalogue({ robes, setRobes, toast }) {
       </div>
 
       <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        {filtered.map(r => (
-          <div key={r.id} onClick={() => setDetail(r)} className="robe-card" style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, overflow:"hidden", cursor:"pointer", boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
+        {filtered.map((r,i) => (
+          <div key={r.id} onClick={() => setDetail(r)} className="robe-card card-anim" style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, overflow:"hidden", cursor:"pointer", boxShadow:"0 2px 10px rgba(31,58,46,.07)", animationDelay:`${Math.min(i*40,320)}ms` }}>
             <div style={{ height:110, position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               {r.photo_url
                 ? <img src={r.photo_url} alt={r.nom} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
@@ -654,10 +654,10 @@ function Catalogue({ robes, setRobes, toast }) {
               }
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-              {[["Taille",detail.taille,T.encre],["Prix",`${detail.prix}€`,T.vert],["Caution",`${detail.caution}€`,T.encre]].map(([l,v,col]) => (
-                <div key={l} style={{ background:T.fond, borderRadius:8, padding:"10px", textAlign:"center", border:`1.5px solid ${T.vertM}` }}>
-                  <div style={{ fontSize:9, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:4 }}>{l}</div>
-                  <div style={{ fontWeight:900, fontSize:18, color:col }}>{v}</div>
+              {[["Taille",detail.taille,T.encre],["Prix",`${detail.prix}€`,T.or],["Caution",`${detail.caution}€`,T.encre]].map(([l,v,col]) => (
+                <div key={l} style={{ background:T.blanc, borderRadius:8, padding:"11px 8px", textAlign:"center", boxShadow:"0 1px 3px rgba(28,27,23,.06)" }}>
+                  <div style={{ fontSize:9, fontWeight:700, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:5 }}>{l}</div>
+                  <div style={{ fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:19, color:col }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -673,11 +673,11 @@ function Catalogue({ robes, setRobes, toast }) {
                 setEditId(r.id);
                 setDetail(null);
                 setModal(true);
-              }} style={{ padding:"11px", borderRadius:9, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                ✏️ Modifier
+              }} style={{ padding:"12px", borderRadius:9, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+                <Edit3 size={14}/> Modifier
               </button>
-              <button onClick={() => deleteRobe(detail)} style={{ padding:"11px", borderRadius:9, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                🗑️ Supprimer
+              <button onClick={() => deleteRobe(detail)} style={{ padding:"12px", borderRadius:9, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+                <Trash2 size={14}/> Supprimer
               </button>
             </div>
           </>
@@ -821,7 +821,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
 
   return (
     <div style={{ padding:"0 16px" }}>
-      <div style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:14, marginBottom:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
+      <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:14, marginBottom:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
         <CalHeader mois={mois} setMois={setMois}/>
         <CalGrid cells={cells} selected={sel} onSelect={setSel} eventsByDay={useMemo(()=>{
         const m={};
@@ -837,12 +837,12 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
       </div>
       {dayEss.length === 0
-        ? <div style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"24px 16px", textAlign:"center", color:T.gris, fontSize:13 }}>Aucun essayage ce jour</div>
-        : dayEss.map(e => {
+        ? <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"24px 16px", textAlign:"center", color:T.gris, fontSize:13 }}>Aucun essayage ce jour</div>
+        : dayEss.map((e,i) => {
             const r = robes.find(x=>x.id===e.rid);
             const cl = clientes.find(x=>x.id===e.cid);
             return (
-              <div key={e.id} style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10 }}>
+              <div key={e.id} className="card-anim" style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"12px 14px", marginBottom:10, animationDelay:`${Math.min(i*40,320)}ms` }}>
                 <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:10 }}>
                   <Avatar color={r?.shade} nom={cl?.nom} size={44}/>
                   <div style={{ flex:1 }}>
@@ -850,14 +850,14 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
                     <div style={{ fontSize:12, color:T.gris }}>{r?.nom} · {e.heure}</div>
                     {e.note && <div style={{ fontSize:11, color:T.rose, marginTop:3, fontStyle:"italic" }}>{e.note}</div>}
                   </div>
-                  <span style={{ background:e.date<TODAY?T.fond:T.vertL, color:e.date<TODAY?T.gris:T.vert, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{e.date<TODAY?"Passé":"À venir"}</span>
+                  <span style={{ background:e.date<TODAY?T.vertL:T.orL, color:e.date<TODAY?T.gris:T.or, fontSize:10, fontWeight:700, padding:"3px 9px", borderRadius:100 }}>{e.date<TODAY?"Passé":"À venir"}</span>
                 </div>
                 <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"5px 10px", borderRadius:8, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
-                    ✏️ Modifier
+                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"6px 11px", borderRadius:7, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
+                    <Edit3 size={12}/> Modifier
                   </button>
-                  <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("Essayage supprimé"); }} style={{ padding:"5px 10px", borderRadius:8, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
-                    🗑️ Supprimer
+                  <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("Essayage supprimé"); }} style={{ padding:"6px 11px", borderRadius:7, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
+                    <Trash2 size={12}/> Supprimer
                   </button>
                 </div>
               </div>
@@ -904,7 +904,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
               </div>
             )}
             {form.nom && clientes.find(cl=>cl.nom.toLowerCase()===form.nom.toLowerCase()) && (
-              <div style={{ background:T.vertL, border:`1.5px solid ${T.vertM}`, borderRadius:8, padding:"9px 13px", marginTop:6, display:"flex", alignItems:"center", gap:8, fontSize:12, fontWeight:700, color:T.vert }}>
+              <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"9px 13px", marginTop:6, display:"flex", alignItems:"center", gap:8, fontSize:12, fontWeight:700, color:T.vert }}>
                 <Check size={14}/> {form.nom} sélectionnée
               </div>
             )}
@@ -961,7 +961,7 @@ function Planning({ reservations, robes, clientes }) {
 
   return (
     <div style={{ padding:"0 16px" }}>
-      <div style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:14, marginBottom:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
+      <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:14, marginBottom:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
         <CalHeader mois={mois} setMois={setMois}/>
         <CalGrid cells={cells} selected={sel} onSelect={setSel} eventsByDay={useMemo(()=>{
         const m={};
@@ -985,12 +985,12 @@ function Planning({ reservations, robes, clientes }) {
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
       </div>
       {dayRes.length === 0
-        ? <div style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"24px 16px", textAlign:"center", color:T.gris, fontSize:13 }}>✅ Toutes les pièces disponibles</div>
+        ? <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"24px 16px", textAlign:"center", color:T.gris, fontSize:13 }}>✅ Toutes les pièces disponibles</div>
         : dayRes.map(r => {
             const robe = robes.find(x=>x.id===r.rid);
             const cl = clientes.find(x=>x.id===r.cid);
             return (
-              <div key={r.id} style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
+              <div key={r.id} style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
                   <Avatar color={robe?.shade} nom={cl?.nom} size={44}/>
                   <div style={{ flex:1 }}>
@@ -1078,12 +1078,12 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
         <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} réservation{filtered.length>1?"s":""}</div>
       </div>
       <div style={{ padding:"0 16px" }}>
-        {filtered.map(r => {
+        {filtered.map((r,i) => {
           const robe = robes.find(x=>x.id===r.rid);
           const cl = clientes.find(x=>x.id===r.cid);
           const reste = r.prix - r.acompte;
           return (
-            <div key={r.id} onClick={()=>setDetail({r,robe,cl,reste})} style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, cursor:"pointer", boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
+            <div key={r.id} onClick={()=>setDetail({r,robe,cl,reste})} className="tap-card card-anim" style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, cursor:"pointer", boxShadow:"0 2px 10px rgba(31,58,46,.07)", animationDelay:`${Math.min(i*40,320)}ms` }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
                                 {robe?.photo_url
                   ? <img src={robe.photo_url} alt={robe.nom} style={{width:44,height:44,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
@@ -1124,21 +1124,21 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 <span style={{ marginTop:6, display:"inline-block", background:(statCol[detail.r.statut]||T.gris)+"1A", color:statCol[detail.r.statut]||T.gris, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[detail.r.statut]||detail.r.statut}</span>
               </div>
             </div>
-            <div style={{ background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:10, padding:"11px 14px", marginBottom:12, display:"flex", gap:12, alignItems:"center" }}>
+            <div style={{ background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:12, display:"flex", gap:12, alignItems:"center" }}>
               <Avatar color={detail.robe?.shade} nom={detail.robe?.nom} size={38}/>
               <div>
                 <div style={{ fontWeight:800, fontSize:13, color:T.encre }}>{detail.robe?.nom}</div>
                 <div style={{ fontSize:11, color:T.gris }}>{detail.robe?.categorie} · T.{detail.robe?.taille}</div>
               </div>
             </div>
-            <div style={{ background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:10, padding:"11px 14px", marginBottom:12 }}>
+            <div style={{ background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:12 }}>
               <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:6 }}>Dates</div>
               <div style={{ fontSize:14, fontWeight:700, color:T.encre }}>
                 {new Date(detail.r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})} → {new Date(detail.r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}
               </div>
             </div>
             {/* Prix location */}
-            <div style={{ background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:10, padding:"11px 14px", marginBottom:10 }}>
+            <div style={{ background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:10 }}>
               <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:10 }}>Prix location</div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
                 {[["Prix",`${detail.r.prix}€`,T.vert],["Acompte versé",`${detail.r.acompte}€`,T.gris]].map(([l,v,col]) => (
@@ -1154,7 +1154,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               </div>
             </div>
             {/* Caution séparée */}
-            <div style={{ background:T.vertL, border:`1.5px solid ${T.vertM}`, borderRadius:10, padding:"11px 14px", marginBottom:10 }}>
+            <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:10 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
                 <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase" }}>Caution</div>
                 <span style={{ fontWeight:900, fontSize:16, color:T.encre }}>{detail.r.caution}€</span>
@@ -1169,8 +1169,8 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 setModal(true);
                 setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:detail.r.note||"", prixExc:"" });
                 setEditResaId(detail.r.id);
-              }} style={{ padding:"11px", borderRadius:9, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                ✏️ Modifier
+              }} style={{ padding:"12px", borderRadius:9, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+                <Edit3 size={14}/> Modifier
               </button>
               <button onClick={async()=>{
                 if(!window.confirm(`Supprimer cette réservation ?`)) return;
@@ -1178,8 +1178,8 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 setReservations(p=>p.filter(x=>x.id!==detail.r.id));
                 setDetail(null);
                 toast("Réservation supprimée");
-              }} style={{ padding:"11px", borderRadius:9, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                🗑️ Supprimer
+              }} style={{ padding:"12px", borderRadius:9, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+                <Trash2 size={14}/> Supprimer
               </button>
             </div>
           </>
@@ -1201,7 +1201,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               autoComplete="off"
             />
             {showSuggest && suggestions.length>0 && (
-              <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, right:0, background:T.blanc, border:`1.5px solid ${T.vertM}`, borderRadius:8, boxShadow:"0 8px 24px rgba(30,74,48,.12)", zIndex:50, maxHeight:200, overflowY:"auto" }}>
+              <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, right:0, background:T.blanc, border:`1px solid ${T.vertM}`, borderRadius:8, boxShadow:"0 8px 24px rgba(30,74,48,.12)", zIndex:50, maxHeight:200, overflowY:"auto" }}>
                 {suggestions.map(c => (
                   <div
                     key={c.id}
@@ -1309,7 +1309,7 @@ function Stats({ reservations, robes }) {
           <div style={{ fontSize:11, color:T.gris, marginTop:4 }}>par réservation</div>
         </div>
       </div>
-      <div style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:14, marginBottom:10 }}>
+      <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:14, marginBottom:10 }}>
         <div style={{ fontWeight:800, fontSize:14, color:T.encre, marginBottom:4 }}>CA par mois</div>
         <div style={{ fontSize:11, color:T.gris, marginBottom:14 }}>Tap sur une barre pour le détail</div>
         <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:90 }}>
@@ -1352,7 +1352,7 @@ function Stats({ reservations, robes }) {
           </div>
         </div>
       )}
-      <div style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:14 }}>
+      <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:14 }}>
         <div style={{ fontWeight:800, fontSize:14, color:T.encre, marginBottom:12 }}>Top pièces</div>
         {parRobe.map(([rid,ca],i) => {
           const r=robes.find(x=>x.id===rid);
@@ -1417,7 +1417,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
 
       <div style={{ padding:"0 16px" }}>
         {filtered.length === 0 && (
-          <div style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"32px 16px", textAlign:"center", color:T.gris }}>
+          <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"32px 16px", textAlign:"center", color:T.gris }}>
             <div style={{ fontSize:24, marginBottom:8 }}>👥</div>
             <div style={{ fontSize:13, fontWeight:700 }}>Aucune cliente pour l'instant</div>
             <div style={{ fontSize:12, marginTop:4 }}>Elles apparaissent automatiquement lors des essayages et réservations</div>
@@ -1430,8 +1430,8 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
           return (
             <div key={cl.id} onClick={()=>setDetail(cl)}
               className="tap-card"
-              style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)", animation:`fadeUp .4s cubic-bezier(.22,1,.36,1) ${idx*.05}s both` }}>
-              <div style={{ width:48, height:48, borderRadius:9, background:`linear-gradient(135deg,${SHADES[idx%SHADES.length]},${SHADES[(idx+2)%SHADES.length]})`, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:900, fontSize:20, flexShrink:0 }}>
+              style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)", animation:`fadeUp .4s cubic-bezier(.22,1,.36,1) ${idx*.05}s both` }}>
+              <div style={{ width:48, height:48, borderRadius:"50%", background:`linear-gradient(135deg,${SHADES[idx%SHADES.length]},${SHADES[(idx+2)%SHADES.length]})`, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:19, flexShrink:0, boxShadow:"0 2px 6px rgba(28,27,23,.15)" }}>
                 {cl.nom?.[0]?.toUpperCase()||"?"}
               </div>
               <div style={{ flex:1 }}>
@@ -1486,10 +1486,10 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
 
               {/* Stats */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:14 }}>
-                {[["Réservations",clResa.length,T.vert],["Essayages",clEss.length,T.rose],["CA total",`${caTotal}€`,T.vert]].map(([l,v,col])=>(
-                  <div key={l} style={{ background:T.fond, borderRadius:8, padding:"10px 8px", textAlign:"center", border:`1.5px solid ${T.vertM}` }}>
-                    <div style={{ fontSize:9, fontWeight:800, color:T.gris, textTransform:"uppercase", letterSpacing:".08em", marginBottom:4 }}>{l}</div>
-                    <div style={{ fontWeight:900, fontSize:18, color:col }}>{v}</div>
+                {[["Réservations",clResa.length,T.vert],["Essayages",clEss.length,T.rose],["CA total",`${caTotal}€`,T.or]].map(([l,v,col])=>(
+                  <div key={l} style={{ background:T.blanc, borderRadius:8, padding:"11px 8px", textAlign:"center", boxShadow:"0 1px 3px rgba(28,27,23,.06)" }}>
+                    <div style={{ fontSize:9, fontWeight:700, color:T.gris, textTransform:"uppercase", letterSpacing:".08em", marginBottom:5 }}>{l}</div>
+                    <div style={{ fontFamily:"'Fraunces',serif", fontWeight:600, fontSize:19, color:col }}>{v}</div>
                   </div>
                 ))}
               </div>
@@ -1501,7 +1501,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
                   {clResa.map(r=>{
                     const robe=robes.find(x=>x.id===r.rid);
                     return (
-                      <div key={r.id} style={{ background:T.blanc, borderRadius:8, border:`1.5px solid ${T.vertM}`, padding:"10px 12px", marginBottom:8, display:"flex", gap:10, alignItems:"center" }}>
+                      <div key={r.id} style={{ background:T.blanc, borderRadius:8, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"10px 12px", marginBottom:8, display:"flex", gap:10, alignItems:"center" }}>
                         {robe?.photo_url
                           ? <img src={robe.photo_url} alt={robe.nom} style={{width:36,height:36,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
                           : <Avatar color={robe?.shade} nom={robe?.nom} size={36}/>
@@ -1524,7 +1524,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
                   {clEss.map(e=>{
                     const robe=robes.find(x=>x.id===e.rid);
                     return (
-                      <div key={e.id} style={{ background:T.blanc, borderRadius:8, border:`1.5px solid ${T.vertM}`, padding:"10px 12px", marginBottom:8, display:"flex", gap:10, alignItems:"center" }}>
+                      <div key={e.id} style={{ background:T.blanc, borderRadius:8, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"10px 12px", marginBottom:8, display:"flex", gap:10, alignItems:"center" }}>
                         {robe?.photo_url
                           ? <img src={robe.photo_url} alt={robe.nom} style={{width:36,height:36,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
                           : <Avatar color={robe?.shade} nom={robe?.nom} size={36}/>
@@ -1542,11 +1542,11 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
 
               {/* Actions */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:14 }}>
-                <button onClick={()=>{}} style={{ padding:"11px", borderRadius:9, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                  ✏️ Modifier
+                <button onClick={()=>{}} style={{ padding:"12px", borderRadius:9, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+                  <Edit3 size={14}/> Modifier
                 </button>
-                <button onClick={()=>deleteCl(detail)} style={{ padding:"11px", borderRadius:9, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
-                  🗑️ Supprimer
+                <button onClick={()=>deleteCl(detail)} style={{ padding:"12px", borderRadius:9, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
+                  <Trash2 size={14}/> Supprimer
                 </button>
               </div>
             </>
@@ -1628,7 +1628,7 @@ function AdminPanel() {
 
       <div style={{ fontWeight:800, fontSize:13, color:T.vert, marginBottom:10, marginTop:pending.length>0?16:0 }}>✅ Comptes actifs ({active.length})</div>
       {active.map(u => (
-        <div key={u.email} style={{ background:T.blanc, borderRadius:10, border:`1.5px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10 }}>
+        <div key={u.email} style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"12px 14px", marginBottom:10 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
             <div style={{ fontWeight:800, fontSize:13, color:T.encre }}>{u.email}</div>
             <div style={{ display:"flex", gap:6 }}>
@@ -1643,10 +1643,10 @@ function AdminPanel() {
           <div style={{ fontSize:11, color:T.gris, marginBottom:8 }}>{u.note}</div>
           {!u.paid && u.plan!=="admin" && (
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-              <button onClick={()=>setPaid(u.email,"fondateur",79)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+              <button onClick={()=>setPaid(u.email,"fondateur",79)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
                 💚 Fondateur 79€
               </button>
-              <button onClick={()=>setPaid(u.email,"standard",99)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1.5px solid ${T.vertM}`, color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+              <button onClick={()=>setPaid(u.email,"standard",99)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
                 ✓ Standard 99€
               </button>
             </div>
