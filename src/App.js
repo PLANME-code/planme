@@ -1619,6 +1619,17 @@ function AdminPanel() {
     setUsers(p => p.map(u => u.email===email ? {...u, approved:false, paid:false} : u));
   };
 
+  const reject = async (email) => {
+    if (!window.confirm(`Refuser et supprimer la demande de ${email} ?`)) return;
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
+        method:"DELETE",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}` }
+      });
+    } catch(e) { console.error(e); }
+    setUsers(p => p.filter(u => u.email!==email));
+  };
+
   const pending = users.filter(u => !u.approved);
   const active = users.filter(u => u.approved);
 
@@ -1638,7 +1649,7 @@ function AdminPanel() {
                 <button onClick={()=>approve(u.email)} style={{ padding:"9px", borderRadius:8, background:T.rose, color:"#fff", border:"none", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
                   ✅ Approuver
                 </button>
-                <button onClick={()=>revoke(u.email)} style={{ padding:"9px", borderRadius:8, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                <button onClick={()=>reject(u.email)} style={{ padding:"9px", borderRadius:8, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
                   ❌ Refuser
                 </button>
               </div>
@@ -1754,7 +1765,14 @@ export default function App() {
       if (Array.isArray(cl)) setClientes(cl);
       if (Array.isArray(res)) setReservations(res.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
       if (Array.isArray(ess)) setEssayages(ess.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
-    }).catch(console.error).finally(()=>setLoading(false));
+    }).catch(async (e) => {
+      console.error(e);
+      if (String(e.message||"").includes("Session expirée")) {
+        await auth.signOut();
+        setUser(null);
+        setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
+      }
+    }).finally(()=>setLoading(false));
   },[user]);
 
   const TABS = [
