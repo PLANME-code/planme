@@ -4,6 +4,11 @@ import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, Chevron
 const SUPABASE_URL = "https://drgiyafkcmfydkabctxa.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2l5YWZrY21meWRrYWJjdHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNTA5MDAsImV4cCI6MjEwMTkyNjkwMH0.Ak3tEWz5PL9DRhGKOswtqujW7dHM3-x79hd8ItteIQo";
 
+// EmailJS — pour l'envoi de l'email de refus (à remplir sur emailjs.com)
+const EMAILJS_SERVICE_ID = "service_zrdnuog";
+const EMAILJS_TEMPLATE_ID = "template_4ux2cjt";
+const EMAILJS_PUBLIC_KEY = "58U-UDNno8MAhhmRno9A7";
+
 // Token session courant
 let _token = SUPABASE_KEY;
 let _userId = null;
@@ -1584,6 +1589,16 @@ function AdminPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Charge le SDK EmailJS une seule fois
+    if (!document.getElementById('emailjs-sdk')) {
+      const s = document.createElement('script');
+      s.id = 'emailjs-sdk';
+      s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+      s.onload = () => { try { window.emailjs?.init(EMAILJS_PUBLIC_KEY); } catch(e) {} };
+      document.head.appendChild(s);
+    } else if (window.emailjs) {
+      try { window.emailjs.init(EMAILJS_PUBLIC_KEY); } catch(e) {}
+    }
     fetch(`${SUPABASE_URL}/rest/v1/users_approved?select=*&order=created_at.desc`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}` }
     }).then(r=>r.json()).then(data => {
@@ -1621,6 +1636,16 @@ function AdminPanel() {
 
   const reject = async (email) => {
     if (!window.confirm(`Refuser et supprimer la demande de ${email} ?`)) return;
+    try {
+      if (window.emailjs && !EMAILJS_SERVICE_ID.startsWith("REMPLACE")) {
+        await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email: email,
+          name: "Plan Me",
+          time: new Date().toLocaleDateString("fr-FR"),
+          message: "Votre demande d'accès à Plan Me n'a malheureusement pas pu être validée. N'hésitez pas à nous contacter pour plus d'informations."
+        });
+      }
+    } catch(e) { console.error("Erreur envoi email refus:", e); }
     try {
       await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
         method:"DELETE",
