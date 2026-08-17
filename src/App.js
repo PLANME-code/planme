@@ -1025,7 +1025,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [detail, setDetail] = useState(null);
   const [editResaId, setEditResaId] = useState(null);
   const [q, setQ] = useState("");
-  const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"" });
+  const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
   const [showSuggest, setShowSuggest] = useState(false);
 
   const suggestions = form.nom.trim().length>0
@@ -1050,7 +1050,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       setClientes(p => [...p, cl]);
     }
     const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
-    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
+    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
     const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
     console.log('_userId before insert:', _userId, 'data:', JSON.stringify(data));
     if (editResaId) {
@@ -1133,7 +1133,10 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               </div>
             </div>
             <div style={{ background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:12, display:"flex", gap:12, alignItems:"center" }}>
-              <Avatar color={detail.robe?.shade} nom={detail.robe?.nom} size={38}/>
+              {detail.robe?.photo_url
+                ? <img src={detail.robe.photo_url} alt={detail.robe.nom} style={{ width:38, height:38, borderRadius:11, objectFit:"cover", flexShrink:0 }}/>
+                : <Avatar color={detail.robe?.shade} nom={detail.robe?.nom} size={38}/>
+              }
               <div>
                 <div style={{ fontWeight:800, fontSize:13, color:T.encre }}>{detail.robe?.nom}</div>
                 <div style={{ fontSize:11, color:T.gris }}>{detail.robe?.categorie} · T.{detail.robe?.taille}</div>
@@ -1160,6 +1163,10 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 <span style={{ fontSize:13, fontWeight:700, color:detail.r.statut==="terminee"?T.vert:detail.reste>0?T.rose:T.vert }}>{detail.r.statut==="terminee"?"Soldée ✓":"Reste à payer"}</span>
                 <span style={{ fontWeight:900, fontSize:18, color:detail.r.statut==="terminee"?T.vert:detail.reste>0?T.rose:T.vert }}>{detail.r.statut==="terminee"?"0€":`${detail.reste}€`}</span>
               </div>
+              {detail.r.moyen_paiement && <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
+                <span style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".08em", textTransform:"uppercase" }}>Paiement</span>
+                <span style={{ background:T.roseL, color:T.rose, fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:100 }}>{detail.r.moyen_paiement}</span>
+              </div>}
             </div>
             {/* Caution séparée */}
             <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:10 }}>
@@ -1175,7 +1182,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               <button onClick={()=>{
                 setDetail(null);
                 setModal(true);
-                setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:detail.r.note||"", prixExc:"" });
+                setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:detail.r.note||"", paiement:detail.r.moyen_paiement||"", prixExc:"" });
                 setEditResaId(detail.r.id);
               }} style={{ padding:"12px", borderRadius:9, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
                 <Edit3 size={14}/> Modifier
@@ -1254,6 +1261,16 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
         <Field label="Acompte versé (€) *">
           <input style={{ ...inputStyle, borderColor:!form.acompte?T.rose:T.vertM }} type="number" value={form.acompte} onChange={e=>setForm(p=>({...p,acompte:e.target.value}))} placeholder="Obligatoire pour confirmer"/>
           {!form.acompte && <div style={{ fontSize:11, color:T.rose, fontWeight:700, marginTop:4 }}>⚠️ L'acompte est obligatoire pour bloquer la pièce</div>}
+        </Field>
+        <Field label="Moyen de paiement">
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {["Espèces","Carte","Virement","PayPal","Wero","Chèque"].map(m => (
+              <button key={m} type="button" onClick={()=>setForm(p=>({...p,paiement:p.paiement===m?"":m}))}
+                style={{ padding:"7px 13px", borderRadius:100, border:`1px solid ${form.paiement===m?T.rose:T.vertM}`, background:form.paiement===m?T.rose:T.blanc, color:form.paiement===m?"#fff":T.encre, fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                {m}
+              </button>
+            ))}
+          </div>
         </Field>
         {+form.prix>0 && (
           <div style={{ background:T.roseL, borderRadius:10, padding:"12px 14px", marginBottom:14 }}>
@@ -1345,7 +1362,10 @@ function Stats({ reservations, robes }) {
             const robe=robes.find(x=>x.id===r.rid);
             return (
               <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:`1px solid ${T.vertM}` }}>
-                <Avatar color={robe?.shade} nom={robe?.nom} size={32}/>
+                {robe?.photo_url
+                  ? <img src={robe.photo_url} alt={robe.nom} style={{ width:32, height:32, borderRadius:10, objectFit:"cover", flexShrink:0 }}/>
+                  : <Avatar color={robe?.shade} nom={robe?.nom} size={32}/>
+                }
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:12, fontWeight:700, color:T.encre }}>{robe?.nom}</div>
                   <div style={{ fontSize:11, color:T.gris }}>{new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</div>
@@ -1740,8 +1760,8 @@ export default function App() {
   const TABS = [
     { id:"catalogue", label:"Catalogue", Icon:Package },
     { id:"essayages", label:"Essayages", Icon:Sparkles },
-    { id:"planning",  label:"Planning",  Icon:Calendar },
     { id:"resa",      label:"Résa",      Icon:Check },
+    { id:"planning",  label:"Planning",  Icon:Calendar },
     { id:"clientes",  label:"Clientes",  Icon:TrendingUp },
     { id:"stats",     label:"Stats",     Icon:BarChart3 },
   ];
