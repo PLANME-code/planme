@@ -160,43 +160,43 @@ const ONBOARDING = {
     emoji: "📦",
     title: "Ton catalogue de pièces",
     desc: "Ajoute toutes tes robes, karakou, caftan... avec photo, taille, prix et caution. Appuie sur + pour commencer !",
-    color: "#1F3A2E",
+    color: "#D9558C",
   },
   essayages: {
     emoji: "✨",
     title: "Calendrier des essayages",
     desc: "Planifie les essayages séparément de tes locations. Sélectionne un jour dans le calendrier et appuie sur + pour ajouter.",
-    color: "#3D5C48",
+    color: "#EFA0C0",
   },
   planning: {
     emoji: "📅",
     title: "Planning des réservations",
     desc: "Visualise tes locations confirmées sur le calendrier. Les jours occupés sont indiqués — plus jamais de double réservation !",
-    color: "#1F3A2E",
+    color: "#D9558C",
   },
   resa: {
     emoji: "✓",
     title: "Tes réservations",
     desc: "Enregistre chaque location avec le détail client, pièce choisie, acompte et dates. Un acompte est obligatoire pour valider.",
-    color: "#B5735F",
+    color: "#C4487A",
   },
   stats: {
     emoji: "📊",
     title: "Tes statistiques",
     desc: "Suis ton chiffre d'affaires, panier moyen et top pièces. Tape sur une barre du graphique pour voir le détail du mois !",
-    color: "#1F3A2E",
+    color: "#D9558C",
   },
 };
 
 const T = {
-  vert: "#3DAE72", vert2: "#2E9460", vertL: "#EAF8F0", vertM: "#EFE8DC",
-  rose: "#F2478E", rose2: "#D9276F", roseL: "#FFEBF3",
+  vert: "#E8699F", vert2: "#D9558C", vertL: "#FCE9F1", vertM: "#F5DCE7",
+  rose: "#E8699F", rose2: "#D9558C", roseL: "#FCE9F1",
   or: "#B8863E", orL: "#FBF3E4",
-  encre: "#211F1A", gris: "#948C7E", fond: "#F5F3EE", blanc: "#FFFFFF",
+  encre: "#211F1A", gris: "#9B8F97", fond: "#FDF8FA", blanc: "#FFFFFF",
 };
-const GRAD = `linear-gradient(135deg, ${T.vert}, ${T.rose})`;
+const GRAD = T.rose;
 
-const SHADES = ["#3DAE72","#2E9460","#F2478E","#D63A78","#5C7C68","#B8863E","#F786B4","#4A4436"];
+const SHADES = ["#E8699F","#EFA0C0","#D9558C","#F3B8D2","#C4487A","#E8699F","#EFA0C0","#D9558C"];
 
 const TODAY = new Date().toISOString().slice(0,10);
 
@@ -209,7 +209,7 @@ function PasswordStrength({ password }) {
     { label:"Un caractère spécial", ok: /[^A-Za-z0-9]/.test(password) },
   ];
   const score = checks.filter(c=>c.ok).length;
-  const colors = ["#E05050","#E08030","#D4A020","#1F3A2E"];
+  const colors = ["#E05050","#E08030","#D4A020","#3DAE72"];
   const labels = ["Trop faible","Faible","Moyen","Fort"];
   if (!password) return null;
   return (
@@ -323,10 +323,10 @@ function AuthScreen({ onAuth }) {
     <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit", opacity:exiting?0:1, transition:"opacity .5s ease" }}>
       {/* Logo */}
       <div style={{ marginBottom:34, textAlign:"center", animation:"fadeUp .6s ease both" }}>
-        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:"#1F4D36", letterSpacing:-0.5, lineHeight:1 }}>
+        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
           Plan<span style={{ color:T.rose }}>me</span>
         </div>
-        <div style={{ fontSize:11, color:"#1F4D36", fontWeight:600, marginTop:10, letterSpacing:".18em", textTransform:"uppercase", opacity:.7 }}>Gestion locations</div>
+        <div style={{ fontSize:11, color:T.encre, fontWeight:600, marginTop:10, letterSpacing:".18em", textTransform:"uppercase", opacity:.55 }}>Gestion locations</div>
       </div>
 
       {/* Card */}
@@ -1768,8 +1768,8 @@ export default function App() {
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       {signingOut && (
         <div style={{ position:"fixed", inset:0, background:T.roseL, zIndex:9999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", animation:"fadeIn .4s ease both" }}>
-          <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:36, color:"#1F4D36", letterSpacing:-0.5, marginBottom:10 }}>Plan<span style={{ color:T.rose }}>me</span></div>
-          <div style={{ fontSize:12, color:"#1F4D36", fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", opacity:.7 }}>À bientôt</div>
+          <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:36, color:T.encre, letterSpacing:-0.5, marginBottom:10 }}>Plan<span style={{ color:T.rose }}>me</span></div>
+          <div style={{ fontSize:12, color:T.encre, fontWeight:600, letterSpacing:".08em", textTransform:"uppercase", opacity:.7 }}>À bientôt</div>
         </div>
       )}
 
