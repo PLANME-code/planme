@@ -270,15 +270,34 @@ function PasswordStrength({ password }) {
   );
 }
 
-function AuthScreen({ onAuth, initialError }) {
+function AuthScreen({ onAuth, initialError, initialPaymentEmail }) {
   const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialPaymentEmail || "");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError || "");
   const [success, setSuccess] = useState("");
   const [exiting, setExiting] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(!!initialPaymentEmail);
+
+  const payNow = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement");
+      window.location.href = data.url;
+    } catch(e) {
+      setError(e.message || "Erreur lors du paiement — réessaie.");
+      setLoading(false);
+    }
+  };
 
   const pwStrong = password.length>=8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 
@@ -337,7 +356,7 @@ function AuthScreen({ onAuth, initialError }) {
         }
         if (!access.paid && access.plan !== 'admin' && access.plan !== 'fondateur') {
           await auth.signOut();
-          setError("💳 Votre accès a été validé ! Vérifiez votre email pour finaliser le paiement.");
+          setPaymentPending(true);
           setLoading(false);
           return;
         }
@@ -357,6 +376,30 @@ function AuthScreen({ onAuth, initialError }) {
   };
 
   const inp = { width:"100%", background:T.fond, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+
+  if (paymentPending) {
+    return (
+      <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+        <div style={{ marginBottom:34, textAlign:"center" }}>
+          <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+            Plan<span style={{ color:T.rose }}>me</span>
+          </div>
+        </div>
+        <div style={{ width:"100%", maxWidth:380, background:"#FFFFFF", borderRadius:10, padding:"32px 26px", boxShadow:"0 20px 50px rgba(0,0,0,.22)", textAlign:"center" }}>
+          <div style={{ fontSize:38, marginBottom:14 }}>💳</div>
+          <div style={{ fontWeight:900, fontSize:18, color:T.encre, marginBottom:8 }}>Ton accès est validé !</div>
+          <div style={{ fontSize:13, color:T.gris, marginBottom:22, lineHeight:1.5 }}>Il ne reste plus qu'à finaliser ton abonnement pour débloquer Plan Me.</div>
+          {error && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>}
+          <button onClick={payNow} disabled={loading} style={{ width:"100%", background:loading?T.gris:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:loading?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:loading?"none":`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+            {loading && <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid rgba(255,255,255,.3)", borderTop:"2.5px solid #fff", borderRadius:"50%", animation:"spin .7s linear infinite" }}/>}
+            {loading ? "Redirection..." : "Payer et débloquer l'accès →"}
+          </button>
+          <button onClick={()=>{ setPaymentPending(false); setError(""); }} style={{ marginTop:16, background:"none", border:"none", color:T.gris, fontWeight:700, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>← Retour à la connexion</button>
+        </div>
+        <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit", opacity:exiting?0:1, transition:"opacity .5s ease" }}>
@@ -1828,6 +1871,7 @@ export default function App() {
 
   // Vérifier session existante au démarrage + gérer confirmation email
   const [pendingAuthError, setPendingAuthError] = useState("");
+  const [pendingPaymentEmail, setPendingPaymentEmail] = useState("");
   useEffect(() => {
     (async () => {
       // Vérifier si on revient d'une confirmation email (hash dans l'URL)
@@ -1859,7 +1903,8 @@ export default function App() {
             } else if (!access.approved) {
               setPendingAuthError("⏳ Email confirmé ! Votre demande est en cours de validation, vous serez contactée sous 24h.");
             } else if (!access.paid && access.plan !== 'admin' && access.plan !== 'fondateur') {
-              setPendingAuthError("💳 Votre accès a été validé ! Vérifiez votre email pour finaliser le paiement.");
+              setPendingAuthError(""); // pas d'écran d'erreur ici, on gère via paymentPending côté AuthScreen
+              setPendingPaymentEmail(email.toLowerCase().trim());
             } else {
               // Accès OK — connexion autorisée
               _token = token;
@@ -1925,7 +1970,7 @@ export default function App() {
   const [signingOut, setSigningOut] = useState(false);
 
   if (!authChecked) return null;
-  if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} />;
+  if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} initialPaymentEmail={pendingPaymentEmail} />;
   const handleSignOut = async () => {
     if (!window.confirm("Se déconnecter de Plan Me ?")) return;
     setSigningOut(true);
