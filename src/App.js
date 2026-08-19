@@ -9,6 +9,28 @@ const EMAILJS_SERVICE_ID = "service_zrdnuog";
 const EMAILJS_TEMPLATE_ID = "template_4ux2cjt";
 const EMAILJS_PUBLIC_KEY = "58U-UDNno8MAhhmRno9A7";
 
+// Charge le SDK EmailJS une seule fois et retourne une promesse résolue quand il est prêt
+let _emailjsPromise = null;
+function loadEmailJS() {
+  if (_emailjsPromise) return _emailjsPromise;
+  _emailjsPromise = new Promise((resolve, reject) => {
+    if (window.emailjs) { try { window.emailjs.init(EMAILJS_PUBLIC_KEY); } catch(e) {} resolve(window.emailjs); return; }
+    const existing = document.getElementById('emailjs-sdk');
+    if (existing) {
+      existing.addEventListener('load', () => { try { window.emailjs.init(EMAILJS_PUBLIC_KEY); } catch(e) {} resolve(window.emailjs); });
+      existing.addEventListener('error', () => reject(new Error("Échec chargement SDK EmailJS")));
+      return;
+    }
+    const s = document.createElement('script');
+    s.id = 'emailjs-sdk';
+    s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+    s.onload = () => { try { window.emailjs.init(EMAILJS_PUBLIC_KEY); } catch(e) {} resolve(window.emailjs); };
+    s.onerror = () => reject(new Error("Échec chargement SDK EmailJS"));
+    document.head.appendChild(s);
+  });
+  return _emailjsPromise;
+}
+
 // Token session courant
 let _token = SUPABASE_KEY;
 let _userId = null;
@@ -47,6 +69,11 @@ const auth = {
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || data.msg);
+    // Supabase renvoie un "faux succès" (200, sans erreur) quand l'email existe déjà,
+    // avec un tableau "identities" vide — c'est le seul signal disponible.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      throw new Error("Un compte existe déjà avec cet email. Contacte l'administratrice si besoin.");
+    }
     return data;
   },
   async signIn(email, password) {
@@ -1589,16 +1616,7 @@ function AdminPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Charge le SDK EmailJS une seule fois
-    if (!document.getElementById('emailjs-sdk')) {
-      const s = document.createElement('script');
-      s.id = 'emailjs-sdk';
-      s.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
-      s.onload = () => { try { window.emailjs?.init(EMAILJS_PUBLIC_KEY); } catch(e) {} };
-      document.head.appendChild(s);
-    } else if (window.emailjs) {
-      try { window.emailjs.init(EMAILJS_PUBLIC_KEY); } catch(e) {}
-    }
+    loadEmailJS().catch(e => console.error("EmailJS non chargé:", e));
     fetch(`${SUPABASE_URL}/rest/v1/users_approved?select=*&order=created_at.desc`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}` }
     }).then(r=>r.json()).then(data => {
@@ -1636,16 +1654,20 @@ function AdminPanel() {
 
   const reject = async (email) => {
     if (!window.confirm(`Refuser et supprimer la demande de ${email} ?`)) return;
-    try {
-      if (window.emailjs && !EMAILJS_SERVICE_ID.startsWith("REMPLACE")) {
-        await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+    if (!EMAILJS_SERVICE_ID.startsWith("REMPLACE")) {
+      try {
+        const emailjs = await loadEmailJS();
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
           to_email: email,
           name: "Plan Me",
           time: new Date().toLocaleDateString("fr-FR"),
           message: "Votre demande d'accès à Plan Me n'a malheureusement pas pu être validée. N'hésitez pas à nous contacter pour plus d'informations."
         });
+      } catch(e) {
+        console.error("Erreur envoi email refus:", e);
+        if (!window.confirm("L'envoi de l'email de refus a échoué. Continuer quand même la suppression de la demande ?")) return;
       }
-    } catch(e) { console.error("Erreur envoi email refus:", e); }
+    }
     try {
       const delRes = await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
         method:"DELETE",
