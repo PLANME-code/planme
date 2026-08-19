@@ -1083,34 +1083,47 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const save = async () => {
     if (!form.nom || !form.rid || !form.debut || !form.acompte) return;
     let cl = clientes.find(c=>c.nom.toLowerCase()===form.nom.toLowerCase());
-    if (!cl) {
-      cl = { id:`c${Date.now()}`, nom:form.nom, tel:form.tel };
-      try { const r = await api("POST","clientes",cl); if(Array.isArray(r)&&r[0]) cl=r[0]; } catch(e) {}
-      setClientes(p => [...p, cl]);
-    }
-    const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
-    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
-    const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
-    console.log('_userId before insert:', _userId, 'data:', JSON.stringify(data));
-    if (editResaId) {
-      try { await api("PATCH",`reservations?id=eq.${editResaId}`,data); } catch(e) { console.error('PATCH error:', e); }
-      setReservations(p=>p.map(x=>x.id===editResaId?{...x,...local,id:editResaId}:x));
-      toast("Réservation modifiée");
-    } else {
-      try { 
-        const r = await api("POST","reservations",data); 
-        console.log('POST result:', r);
-        if(Array.isArray(r)&&r[0]) setReservations(p=>[...p,{...r[0],cid:r[0].cliente_id,rid:r[0].robe_id}]);
-        else setReservations(p => [...p, local]);
-      } catch(e) { 
-        console.error('POST error:', e);
-        setReservations(p => [...p, local]);
+
+    try {
+      // Créer la cliente si elle n'existe pas — SANS id local bidon (l'ancien
+      // `c${Date.now()}` n'était pas un UUID valide et faisait échouer l'insertion
+      // de la réservation sans que la cliente ne voie d'erreur).
+      if (!cl) {
+        const r = await api("POST","clientes",{ nom:form.nom, tel:form.tel, user_id:_userId });
+        if (!Array.isArray(r) || !r[0] || !r[0].id) throw new Error("Échec création cliente");
+        cl = r[0];
+        setClientes(p => [...p, cl]);
       }
-      toast("Réservation confirmée");
+
+      const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
+      const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
+
+      if (editResaId) {
+        await api("PATCH",`reservations?id=eq.${editResaId}`,data);
+        setReservations(p=>p.map(x=>x.id===editResaId?{...x,...data,cid:cl.id,rid:form.rid,id:editResaId}:x));
+        toast("Réservation modifiée");
+      } else {
+        const r = await api("POST","reservations",data);
+        if (!Array.isArray(r) || !r[0] || !r[0].id) throw new Error("Échec création réservation");
+        setReservations(p=>[...p,{...r[0],cid:r[0].cliente_id,rid:r[0].robe_id}]);
+        toast("Réservation confirmée ✓");
+      }
+
+      setModal(false);
+      setEditResaId(null);
+      setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
+
+    } catch(e) {
+      console.error('Erreur réservation:', e);
+      const msg = String(e?.message || e);
+      if (msg.includes("no_overlapping_reservations") || msg.includes("23P01") || msg.includes("exclusion")) {
+        toast("⚠️ Cette pièce est déjà réservée sur ces dates", "error");
+      } else {
+        toast("❌ Erreur : la réservation n'a pas été enregistrée", "error");
+      }
+      // On ne ferme PAS le modal et on n'ajoute RIEN à l'affichage tant que
+      // ce n'est pas confirmé en base — plus de fausse confirmation.
     }
-    setModal(false);
-    setEditResaId(null);
-    setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
   };
 
   const statCol = { confirmee:T.rose, enCours:T.vert, terminee:T.gris };
