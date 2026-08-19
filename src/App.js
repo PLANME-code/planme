@@ -7,7 +7,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // EmailJS — pour l'envoi de l'email de refus (à remplir sur emailjs.com)
 const EMAILJS_SERVICE_ID = "service_zrdnuog";
 const EMAILJS_TEMPLATE_ID = "template_4ux2cjt";
-const EMAILJS_PUBLIC_KEY = "58U-UDNno8MAhhmRno9A7";
+const EMAILJS_PUBLIC_KEY = "d-5YsA5j9C8wv8sVx";
 
 // Charge le SDK EmailJS une seule fois et retourne une promesse résolue quand il est prêt
 let _emailjsPromise = null;
@@ -68,7 +68,13 @@ const auth = {
       body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message || data.msg);
+    if (res.status === 429) {
+      throw new Error("Trop de tentatives d'envoi d'email pour le moment — réessaie dans quelques minutes.");
+    }
+    if (!res.ok || data.error) {
+      const msg = data?.error?.message || data?.error_description || data?.msg || data?.error || "Erreur lors de la création du compte";
+      throw new Error(msg);
+    }
     // Supabase renvoie un "faux succès" (200, sans erreur) quand l'email existe déjà,
     // avec un tableau "identities" vide — c'est le seul signal disponible.
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
