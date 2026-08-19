@@ -263,13 +263,13 @@ function PasswordStrength({ password }) {
   );
 }
 
-function AuthScreen({ onAuth }) {
+function AuthScreen({ onAuth, initialError }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError || "");
   const [success, setSuccess] = useState("");
   const [exiting, setExiting] = useState(false);
 
@@ -1771,33 +1771,55 @@ export default function App() {
   useEffect(() => { injectStyles(); }, []);
 
   // Vérifier session existante au démarrage + gérer confirmation email
+  const [pendingAuthError, setPendingAuthError] = useState("");
   useEffect(() => {
-    // Vérifier si on revient d'une confirmation email (hash dans l'URL)
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      const params = new URLSearchParams(hash.replace('#',''));
-      const token = params.get('access_token');
-      const userId = null; // sera récupéré via le token
-      if (token) {
-        // Décoder le userId depuis le JWT
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const email = payload.email || '';
-          const uid = payload.sub || '';
-          _token = token;
-          _userId = uid;
-          try { localStorage.setItem('planme_session', JSON.stringify({ token, userId:uid, email })); } catch(e) {}
-          setUser({ token, userId:uid, email });
-          // Nettoyer l'URL
-          window.history.replaceState({}, '', window.location.pathname);
-          setAuthChecked(true);
-          return;
-        } catch(e) {}
+    (async () => {
+      // Vérifier si on revient d'une confirmation email (hash dans l'URL)
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        const params = new URLSearchParams(hash.replace('#',''));
+        const token = params.get('access_token');
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const email = payload.email || '';
+            const uid = payload.sub || '';
+            window.history.replaceState({}, '', window.location.pathname);
+
+            // ⚠️ Vérification obligatoire de l'approbation — même via un lien email
+            const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=approved,paid,plan`, {
+              headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+            });
+            const checkData = await checkRes.json();
+            const access = Array.isArray(checkData) && checkData.length > 0 && checkData[0];
+
+            if (!access) {
+              await fetch(`${SUPABASE_URL}/rest/v1/users_approved`, {
+                method:"POST",
+                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, "Content-Type":"application/json", Prefer:"return=representation" },
+                body: JSON.stringify({ email:email.toLowerCase().trim(), approved:false, paid:false, note:"Confirmation email" })
+              }).catch(()=>{});
+              setPendingAuthError("⏳ Email confirmé ! Votre demande d'accès est enregistrée, vous serez contactée sous 24h.");
+            } else if (!access.approved) {
+              setPendingAuthError("⏳ Email confirmé ! Votre demande est en cours de validation, vous serez contactée sous 24h.");
+            } else if (!access.paid && access.plan !== 'admin' && access.plan !== 'fondateur') {
+              setPendingAuthError("💳 Votre accès a été validé ! Vérifiez votre email pour finaliser le paiement.");
+            } else {
+              // Accès OK — connexion autorisée
+              _token = token;
+              _userId = uid;
+              try { localStorage.setItem('planme_session', JSON.stringify({ token, userId:uid, email })); } catch(e) {}
+              setUser({ token, userId:uid, email });
+            }
+            setAuthChecked(true);
+            return;
+          } catch(e) { console.error(e); }
+        }
       }
-    }
-    const session = auth.getSession();
-    if (session) setUser(session);
-    setAuthChecked(true);
+      const session = auth.getSession();
+      if (session) setUser(session);
+      setAuthChecked(true);
+    })();
   }, []);
 
   // Onboarding — voir quels onglets ont déjà été vus
@@ -1847,7 +1869,7 @@ export default function App() {
   const [signingOut, setSigningOut] = useState(false);
 
   if (!authChecked) return null;
-  if (!user) return <AuthScreen onAuth={u => setUser(u)} />;
+  if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} />;
   const handleSignOut = async () => {
     if (!window.confirm("Se déconnecter de Plan Me ?")) return;
     setSigningOut(true);
