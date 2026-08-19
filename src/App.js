@@ -7,6 +7,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // EmailJS — pour l'envoi de l'email de refus (à remplir sur emailjs.com)
 const EMAILJS_SERVICE_ID = "service_zrdnuog";
 const EMAILJS_TEMPLATE_ID = "template_4ux2cjt";
+const EMAILJS_TEMPLATE_APPROVE_ID = "template_9rkca8s";
 const EMAILJS_PUBLIC_KEY = "d-5YsA5j9C8wv8sVx";
 
 // Charge le SDK EmailJS une seule fois et retourne une promesse résolue quand il est prêt
@@ -1631,6 +1632,15 @@ function AdminPanel() {
   },[]);
 
   const approve = async (email) => {
+    if (!EMAILJS_SERVICE_ID.startsWith("REMPLACE")) {
+      try {
+        const emailjs = await loadEmailJS();
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_APPROVE_ID, {
+          to_email: email,
+          message: "Bonne nouvelle, ta demande d'accès à Plan Me a été validée ! Il ne reste plus qu'à finaliser le paiement pour débloquer ton accès complet — tu seras contactée sous peu avec les détails."
+        });
+      } catch(e) { console.error("Erreur envoi email approbation:", e); }
+    }
     await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
       method:"PATCH",
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}`, "Content-Type":"application/json" },
