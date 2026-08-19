@@ -1134,13 +1134,14 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 
       const msg = String(e?.message || e);
       const isConflit = msg.includes("no_overlapping_reservations") || msg.includes("23P01") || msg.includes("exclusion");
-      const userMsg = isConflit
-        ? "⚠️ Cette pièce est déjà réservée sur ces dates. Choisis d'autres dates ou une autre pièce."
-        : "❌ La réservation n'a pas pu être enregistrée. Réessaie.";
-      toast(userMsg, "error");
+      const msgPlain = isConflit
+        ? "Cette pièce est déjà réservée sur ces dates. Choisis d'autres dates ou une autre pièce."
+        : "La réservation n'a pas pu être enregistrée. Réessaie.";
+      toast((isConflit ? "⚠️ " : "❌ ") + msgPlain, "error");
       // Bannière persistante dans le formulaire — contrairement au toast (2,5s puis
       // disparaît), elle reste visible tant que la cliente n'a pas relancé une tentative.
-      setFormError(userMsg);
+      // (Le pictogramme est déjà affiché par la bannière elle-même, on ne le répète pas ici.)
+      setFormError(msgPlain);
       // On ne ferme PAS le modal et on n'ajoute RIEN à l'affichage tant que
       // ce n'est pas confirmé en base — plus de fausse confirmation.
     }
@@ -1276,7 +1277,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       {/* Modal nouvelle réservation */}
       <Modal open={modal} onClose={() => { setModal(false); setFormError(""); }} title="Nouvelle réservation">
         {formError && (
-          <div style={{ background:"#FFF0EC", border:"1.5px solid #F5A088", borderRadius:9, padding:"11px 14px", marginBottom:14, fontSize:12.5, color:"#A5432E", fontWeight:700, display:"flex", gap:8, alignItems:"flex-start" }}>
+          <div style={{ background:"#FDECEC", border:"1.5px solid #E24C4C", borderRadius:9, padding:"11px 14px", marginBottom:14, fontSize:12.5, color:"#B01E1E", fontWeight:700, display:"flex", gap:8, alignItems:"flex-start" }}>
             <span style={{ fontSize:15, lineHeight:1 }}>⚠️</span>
             <span>{formError}</span>
           </div>
