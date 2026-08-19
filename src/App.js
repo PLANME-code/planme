@@ -1647,11 +1647,22 @@ function AdminPanel() {
       }
     } catch(e) { console.error("Erreur envoi email refus:", e); }
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
+      const delRes = await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
         method:"DELETE",
-        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}` }
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}`, Prefer:"return=representation" }
       });
-    } catch(e) { console.error(e); }
+      if (!delRes.ok) {
+        const errBody = await delRes.text();
+        console.error("Échec suppression users_approved:", delRes.status, errBody);
+        alert(`La suppression a échoué (${delRes.status}). Vérifie les policies RLS sur la table users_approved.`);
+        return;
+      }
+      const delData = await delRes.json();
+      if (!Array.isArray(delData) || delData.length === 0) {
+        alert("Aucune ligne supprimée — la policy RLS bloque probablement cette action pour ton compte.");
+        return;
+      }
+    } catch(e) { console.error(e); alert("Erreur réseau lors de la suppression."); return; }
     setUsers(p => p.filter(u => u.email!==email));
   };
 
