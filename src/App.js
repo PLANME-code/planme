@@ -1066,6 +1066,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [q, setQ] = useState("");
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
   const [showSuggest, setShowSuggest] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const suggestions = form.nom.trim().length>0
     ? clientes.filter(c => c.nom.toLowerCase().includes(form.nom.trim().toLowerCase())).slice(0,6)
@@ -1082,6 +1083,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 
   const save = async () => {
     if (!form.nom || !form.rid || !form.debut || !form.acompte) return;
+    setFormError("");
     let cl = clientes.find(c=>c.nom.toLowerCase()===form.nom.toLowerCase());
     let clienteJusteCreee = false; // pour rollback si la réservation échoue ensuite
 
@@ -1131,11 +1133,14 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       }
 
       const msg = String(e?.message || e);
-      if (msg.includes("no_overlapping_reservations") || msg.includes("23P01") || msg.includes("exclusion")) {
-        toast("⚠️ Cette pièce est déjà réservée sur ces dates", "error");
-      } else {
-        toast("❌ Erreur : la réservation n'a pas été enregistrée", "error");
-      }
+      const isConflit = msg.includes("no_overlapping_reservations") || msg.includes("23P01") || msg.includes("exclusion");
+      const userMsg = isConflit
+        ? "⚠️ Cette pièce est déjà réservée sur ces dates. Choisis d'autres dates ou une autre pièce."
+        : "❌ La réservation n'a pas pu être enregistrée. Réessaie.";
+      toast(userMsg, "error");
+      // Bannière persistante dans le formulaire — contrairement au toast (2,5s puis
+      // disparaît), elle reste visible tant que la cliente n'a pas relancé une tentative.
+      setFormError(userMsg);
       // On ne ferme PAS le modal et on n'ajoute RIEN à l'affichage tant que
       // ce n'est pas confirmé en base — plus de fausse confirmation.
     }
@@ -1269,14 +1274,20 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       </Modal>
 
       {/* Modal nouvelle réservation */}
-      <Modal open={modal} onClose={() => setModal(false)} title="Nouvelle réservation">
+      <Modal open={modal} onClose={() => { setModal(false); setFormError(""); }} title="Nouvelle réservation">
+        {formError && (
+          <div style={{ background:"#FFF0EC", border:"1.5px solid #F5A088", borderRadius:9, padding:"11px 14px", marginBottom:14, fontSize:12.5, color:"#A5432E", fontWeight:700, display:"flex", gap:8, alignItems:"flex-start" }}>
+            <span style={{ fontSize:15, lineHeight:1 }}>⚠️</span>
+            <span>{formError}</span>
+          </div>
+        )}
         <div style={{ background:T.vertL, borderRadius:8, padding:"9px 13px", marginBottom:14, fontSize:12, color:T.vert, fontWeight:700 }}>✨ Suite à un essayage ? La cliente sera retrouvée automatiquement</div>
         <Field label="Cliente">
           <div style={{ position:"relative" }}>
             <input
               style={inputStyle}
               value={form.nom}
-              onChange={e=>{ setForm(p=>({...p,nom:e.target.value})); setShowSuggest(true); }}
+              onChange={e=>{ setForm(p=>({...p,nom:e.target.value})); setShowSuggest(true); setFormError(""); }}
               onFocus={()=>setShowSuggest(true)}
               onBlur={()=>setTimeout(()=>setShowSuggest(false),150)}
               placeholder="Prénom Nom"
@@ -1318,8 +1329,8 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
           </div>
         </Field>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <Field label="Date début"><input style={inputStyle} type="date" value={form.debut} onChange={e=>setForm(p=>({...p,debut:e.target.value}))}/></Field>
-          <Field label="Date fin"><input style={inputStyle} type="date" value={form.fin} onChange={e=>setForm(p=>({...p,fin:e.target.value}))}/></Field>
+          <Field label="Date début"><input style={inputStyle} type="date" value={form.debut} onChange={e=>{setForm(p=>({...p,debut:e.target.value})); setFormError("");}}/></Field>
+          <Field label="Date fin"><input style={inputStyle} type="date" value={form.fin} onChange={e=>{setForm(p=>({...p,fin:e.target.value})); setFormError("");}}/></Field>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           <Field label="Prix (€)"><input style={inputStyle} type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder={rSelected?.prix?.toString()||""}/></Field>
