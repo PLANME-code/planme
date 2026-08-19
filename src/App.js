@@ -1083,6 +1083,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const save = async () => {
     if (!form.nom || !form.rid || !form.debut || !form.acompte) return;
     let cl = clientes.find(c=>c.nom.toLowerCase()===form.nom.toLowerCase());
+    let clienteJusteCreee = false; // pour rollback si la réservation échoue ensuite
 
     try {
       // Créer la cliente si elle n'existe pas — SANS id local bidon (l'ancien
@@ -1092,6 +1093,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
         const r = await api("POST","clientes",{ nom:form.nom, tel:form.tel, user_id:_userId });
         if (!Array.isArray(r) || !r[0] || !r[0].id) throw new Error("Échec création cliente");
         cl = r[0];
+        clienteJusteCreee = true;
         setClientes(p => [...p, cl]);
       }
 
@@ -1115,6 +1117,19 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 
     } catch(e) {
       console.error('Erreur réservation:', e);
+
+      // Rollback : si on venait de créer la cliente pour cette réservation
+      // et que la réservation échoue finalement, on supprime la fiche
+      // orpheline plutôt que de la laisser traîner sans réservation.
+      if (clienteJusteCreee && cl?.id) {
+        try {
+          await api("DELETE", `clientes?id=eq.${cl.id}`, null);
+          setClientes(p => p.filter(x => x.id !== cl.id));
+        } catch(delErr) {
+          console.error('Erreur lors du rollback cliente:', delErr);
+        }
+      }
+
       const msg = String(e?.message || e);
       if (msg.includes("no_overlapping_reservations") || msg.includes("23P01") || msg.includes("exclusion")) {
         toast("⚠️ Cette pièce est déjà réservée sur ces dates", "error");
