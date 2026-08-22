@@ -40,6 +40,39 @@ function verifyStripeSignature(rawBody, sigHeader, secret) {
   });
 }
 
+// Envoie un email via l'API REST EmailJS (utilisable côté serveur, pas besoin
+// du SDK navigateur). Réutilise le même template que le mail d'approbation,
+// piloté entièrement par variables.
+async function sendEmailJS({ subject, titre, message, lienAction, texteBouton, toEmail }) {
+  const EMAILJS_SERVICE_ID = 'service_zrdnuog';
+  const EMAILJS_TEMPLATE_ID = 'template_9rkca8s';
+  const EMAILJS_PUBLIC_KEY = 'd-5YsA5j9C8wv8sVx';
+  const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+
+  const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      accessToken: EMAILJS_PRIVATE_KEY,
+      template_params: {
+        to_email: toEmail,
+        email_subject: subject,
+        titre,
+        message,
+        lien_action: lienAction,
+        texte_bouton: texteBouton,
+      },
+    }),
+  });
+  if (!res.ok) {
+    const errTxt = await res.text();
+    console.error('Erreur envoi EmailJS:', res.status, errTxt);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -98,6 +131,22 @@ export default async function handler(req, res) {
           stripe_subscription_id: session.subscription,
         }),
       });
+
+      // Mail de bienvenue automatique — envoyé dès que le paiement est confirmé,
+      // sans aucune action manuelle de ta part.
+      try {
+        await sendEmailJS({
+          toEmail: email,
+          subject: 'Bienvenue sur Plan Me 🎉',
+          titre: 'Bienvenue sur Plan Me !',
+          message: "Ton paiement a bien été reçu, ton abonnement est activé ! Tu peux dès maintenant te connecter et commencer à gérer tes locations, ton catalogue et tes réservations.",
+          lienAction: process.env.SITE_URL || 'https://planme-dmr3.vercel.app',
+          texteBouton: 'Me connecter',
+        });
+      } catch (mailErr) {
+        console.error('Erreur envoi mail de bienvenue:', mailErr);
+        // On ne bloque pas le webhook pour un souci d'email — le paiement reste validé.
+      }
     }
 
     // ── Abonnement résilié/impayé : on coupe l'accès ───────────────────
