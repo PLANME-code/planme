@@ -302,7 +302,7 @@ function AuthScreen({ onAuth, initialError, initialPaymentEmail }) {
   const pwStrong = password.length>=8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 
   const submit = async () => {
-    if (!email || !password) return;
+    if (!email || (mode !== "forgot" && !password)) return;
     if (mode==="signup" && !pwStrong) { setError("Mot de passe trop faible — respecte les critères ci-dessous."); return; }
     setLoading(true);
     setError("");
@@ -325,6 +325,10 @@ function AuthScreen({ onAuth, initialError, initialPaymentEmail }) {
           headers:{ apikey:SUPABASE_KEY, "Content-Type":"application/json" },
           body: JSON.stringify({ email })
         });
+        if (!res.ok) {
+          const data = await res.json().catch(()=>({}));
+          throw new Error(data?.msg || data?.error_description || "Erreur lors de l'envoi de l'email.");
+        }
         setSuccess("📧 Email de réinitialisation envoyé ! Vérifie ta boîte mail.");
         setMode("login");
       } else {
