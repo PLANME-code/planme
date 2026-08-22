@@ -1305,6 +1305,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
   const [showSuggest, setShowSuggest] = useState(false);
   const [formError, setFormError] = useState("");
+  const [robeQuery, setRobeQuery] = useState("");
 
   const suggestions = form.nom.trim().length>0
     ? clientes.filter(c => c.nom.toLowerCase().includes(form.nom.trim().toLowerCase())).slice(0,6)
@@ -1314,6 +1315,8 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     const cl = clientes.find(x=>x.id===r.cid);
     return !q || cl?.nom.toLowerCase().includes(q.toLowerCase());
   });
+
+  const robesFiltrees = robes.filter(r => !robeQuery.trim() || r.nom.toLowerCase().includes(robeQuery.trim().toLowerCase()));
 
   const rSelected = robes.find(r=>r.id===form.rid);
   const prixApplique = form.prixExc ? +form.prixExc : (+form.prix||0);
@@ -1513,7 +1516,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       </Modal>
 
       {/* Modal nouvelle réservation */}
-      <Modal open={modal} onClose={() => { setModal(false); setFormError(""); }} title="Nouvelle réservation">
+      <Modal open={modal} onClose={() => { setModal(false); setFormError(""); setRobeQuery(""); }} title="Nouvelle réservation">
         {formError && (
           <div style={{ background:"#FDECEC", border:"1.5px solid #E24C4C", borderRadius:9, padding:"11px 14px", marginBottom:14, fontSize:12.5, color:"#B01E1E", fontWeight:700, display:"flex", gap:8, alignItems:"flex-start" }}>
             <span style={{ fontSize:15, lineHeight:1 }}>⚠️</span>
@@ -1551,8 +1554,20 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
           </div>
         </Field>
         <Field label="Pièce choisie">
+          <div style={{ position:"relative", marginBottom:8 }}>
+            <Search size={14} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }}/>
+            <input
+              value={robeQuery}
+              onChange={e=>setRobeQuery(e.target.value)}
+              placeholder="Rechercher une pièce (ex: vert, karako...)"
+              style={{ ...inputStyle, paddingLeft:36, padding:"9px 12px 9px 36px", fontSize:13 }}
+            />
+          </div>
+          {robesFiltrees.length===0 && (
+            <div style={{ fontSize:12, color:T.gris, padding:"10px 4px", textAlign:"center" }}>Aucune pièce ne correspond à "{robeQuery}"</div>
+          )}
           <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
-            {robes.map(r => (
+            {robesFiltrees.map(r => (
               <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id,prix:r.prix?.toString()||"",caution:r.caution?.toString()||""}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:8, border:form.rid===r.id?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`, background:form.rid===r.id?T.vertL:T.blanc, cursor:"pointer" }}>
                 {r.photo_url
                   ? <img src={r.photo_url} alt={r.nom} style={{width:34,height:34,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
