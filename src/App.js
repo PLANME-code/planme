@@ -60,6 +60,46 @@ const api = async (method, path, body, retry=true) => {
   return text ? JSON.parse(text) : null;
 };
 
+// Charge le SDK Supabase JS (une seule fois) — utilisé uniquement pour le
+// Realtime (mise à jour instantanée sans avoir à rafraîchir la page).
+// Le reste de l'app continue d'utiliser les appels fetch() bruts existants.
+let _supabaseJsPromise = null;
+function loadSupabaseJS() {
+  if (_supabaseJsPromise) return _supabaseJsPromise;
+  _supabaseJsPromise = new Promise((resolve, reject) => {
+    if (window.supabase) { resolve(window.supabase); return; }
+    const existing = document.getElementById('supabase-js-sdk');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.supabase));
+      existing.addEventListener('error', () => reject(new Error("Échec chargement SDK Supabase JS")));
+      return;
+    }
+    const s = document.createElement('script');
+    s.id = 'supabase-js-sdk';
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.onload = () => resolve(window.supabase);
+    s.onerror = () => reject(new Error("Échec chargement SDK Supabase JS"));
+    document.head.appendChild(s);
+  });
+  return _supabaseJsPromise;
+}
+
+let _realtimeClient = null;
+async function getRealtimeClient() {
+  if (_realtimeClient) return _realtimeClient;
+  const { createClient } = await loadSupabaseJS();
+  _realtimeClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+  return _realtimeClient;
+}
+// Informe le client Realtime du token de session courant, pour que les
+// policies RLS s'appliquent correctement aux mises à jour en direct.
+async function syncRealtimeAuth() {
+  try {
+    const client = await getRealtimeClient();
+    client.realtime.setAuth(_token);
+  } catch(e) { console.error('Erreur sync Realtime auth:', e); }
+}
+
 // Auth functions
 const auth = {
   async signUp(email, password) {
@@ -105,6 +145,7 @@ const auth = {
     if (!userId) { _token = SUPABASE_KEY; throw new Error("Connexion impossible — réessaie"); }
     _userId = userId;
     try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId, email })); } catch(e) {}
+    syncRealtimeAuth();
     return { ...data, user: { ...(data.user||{}), id: userId } };
   },
   async refresh() {
@@ -124,6 +165,7 @@ const auth = {
         _userId = data.user?.id;
         const { email } = JSON.parse(s);
         try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId:data.user?.id, email })); } catch(e) {}
+        syncRealtimeAuth();
         return true;
       }
     } catch(e) {}
@@ -145,6 +187,7 @@ const auth = {
         const { token, userId, email } = JSON.parse(s);
         _token = token;
         _userId = userId;
+        syncRealtimeAuth();
         return { token, userId, email };
       }
     } catch(e) {}
@@ -1851,6 +1894,32 @@ function AdminPanel() {
     }).finally(()=>setLoading(false));
   },[]);
 
+  // Realtime : voit apparaître les nouvelles inscriptions et les paiements
+  // confirmés automatiquement, sans avoir à recharger la page.
+  useEffect(() => {
+    let channel;
+    let cancelled = false;
+    (async () => {
+      try {
+        const client = await getRealtimeClient();
+        client.realtime.setAuth(_token);
+        channel = client
+          .channel('planme-admin-users')
+          .on('postgres_changes', { event:'*', schema:'public', table:'users_approved' }, payload => {
+            setUsers(prev => {
+              if (payload.eventType === 'DELETE') return prev.filter(u => u.email !== payload.old.email);
+              const exists = prev.some(u => u.email === payload.new.email);
+              if (exists) return prev.map(u => u.email === payload.new.email ? payload.new : u);
+              return [payload.new, ...prev];
+            });
+          })
+          .subscribe();
+        if (cancelled && channel) channel.unsubscribe();
+      } catch(e) { console.error('Erreur connexion Realtime admin:', e); }
+    })();
+    return () => { cancelled = true; if (channel) channel.unsubscribe(); };
+  },[]);
+
   const approve = async (email) => {
     if (!EMAILJS_SERVICE_ID.startsWith("REMPLACE")) {
       try {
@@ -1994,6 +2063,20 @@ function AdminPanel() {
   );
 }
 
+// Applique un événement Realtime (INSERT/UPDATE/DELETE) reçu de Supabase à un
+// état React local, sans avoir besoin de tout recharger depuis le serveur.
+function applyRealtimeChange(setState, payload, mapExtra) {
+  setState(prev => {
+    if (payload.eventType === 'DELETE') {
+      return prev.filter(x => x.id !== payload.old.id);
+    }
+    const row = mapExtra ? { ...payload.new, ...mapExtra(payload.new) } : payload.new;
+    const exists = prev.some(x => x.id === row.id);
+    if (exists) return prev.map(x => x.id === row.id ? { ...x, ...row } : x);
+    return [...prev, row];
+  });
+}
+
 // ── APP ───────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("catalogue");
@@ -2121,7 +2204,28 @@ export default function App() {
     }).finally(()=>setLoading(false));
   },[user]);
 
-  const TABS = [
+  // ── Realtime : mise à jour instantanée dès qu'une donnée change en base,
+  // sans avoir besoin de rafraîchir la page (multi-appareils, multi-onglets). ──
+  useEffect(() => {
+    if (!user) return;
+    let channel;
+    let cancelled = false;
+    (async () => {
+      try {
+        const client = await getRealtimeClient();
+        client.realtime.setAuth(_token);
+        channel = client
+          .channel(`planme-${_userId}`)
+          .on('postgres_changes', { event:'*', schema:'public', table:'robes', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setRobes, payload))
+          .on('postgres_changes', { event:'*', schema:'public', table:'clientes', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setClientes, payload))
+          .on('postgres_changes', { event:'*', schema:'public', table:'reservations', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setReservations, payload, row=>({cid:row.cliente_id, rid:row.robe_id})))
+          .on('postgres_changes', { event:'*', schema:'public', table:'essayages', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setEssayages, payload, row=>({cid:row.cliente_id, rid:row.robe_id})))
+          .subscribe();
+        if (cancelled && channel) channel.unsubscribe();
+      } catch(e) { console.error('Erreur connexion Realtime:', e); }
+    })();
+    return () => { cancelled = true; if (channel) channel.unsubscribe(); };
+  },[user]);
     { id:"catalogue", label:"Catalogue", Icon:Package },
     { id:"essayages", label:"Essayages", Icon:Sparkles },
     { id:"resa",      label:"Résa",      Icon:Check },
