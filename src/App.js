@@ -664,6 +664,21 @@ function PayerRedirectScreen({ email }) {
   );
 }
 
+function AppLoadingScreen({ step }) {
+  return (
+    <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+      <div style={{ marginBottom:40, textAlign:"center", animation:"fadeUp .6s ease both" }}>
+        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+          Plan<span style={{ color:T.rose }}>me</span>
+        </div>
+      </div>
+      <span style={{ display:"inline-block", width:32, height:32, border:"3px solid rgba(232,105,159,.25)", borderTop:`3px solid ${T.rose}`, borderRadius:"50%", animation:"spin .7s linear infinite", marginBottom:18 }}/>
+      <div style={{ fontSize:13, fontWeight:700, color:T.encre, opacity:.75 }}>{step || "Préparation de ton espace..."}</div>
+      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 function OnboardingBubble({ tab, onDismiss }) {
   const info = ONBOARDING[tab];
   if (!info) return null;
@@ -2063,6 +2078,19 @@ function AdminPanel() {
   );
 }
 
+// Précharge une liste d'images (photos des robes) avant d'afficher l'app —
+// évite l'effet "popcorn" où les photos apparaissent une par une pendant que
+// la personne navigue déjà dans l'interface.
+function preloadImages(urls) {
+  const unique = [...new Set(urls.filter(Boolean))];
+  return Promise.all(unique.map(url => new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve(); // une photo cassée ne doit pas bloquer tout le chargement
+    img.src = url;
+  })));
+}
+
 // Applique un événement Realtime (INSERT/UPDATE/DELETE) reçu de Supabase à un
 // état React local, sans avoir besoin de tout recharger depuis le serveur.
 function applyRealtimeChange(setState, payload, mapExtra) {
@@ -2085,6 +2113,7 @@ export default function App() {
   const [reservations, setReservations] = useState([]);
   const [essayages, setEssayages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingStep, setLoadingStep] = useState("Préparation de ton espace...");
   const [toast, setToast] = useState(null);
   const [user, setUser] = useState(null); // null = non connecté
   const [authChecked, setAuthChecked] = useState(false);
@@ -2184,16 +2213,31 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
+    setLoadingStep("Chargement de tes données...");
     Promise.all([
       api("GET",`robes?select=*&user_id=eq.${_userId}&order=created_at`),
       api("GET",`clientes?select=*&user_id=eq.${_userId}&order=nom`),
       api("GET",`reservations?select=*&user_id=eq.${_userId}&order=created_at`),
       api("GET",`essayages?select=*&user_id=eq.${_userId}&order=date`),
-    ]).then(([r,cl,res,ess]) => {
+    ]).then(async ([r,cl,res,ess]) => {
       if (Array.isArray(r)) setRobes(r);
       if (Array.isArray(cl)) setClientes(cl);
       if (Array.isArray(res)) setReservations(res.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
       if (Array.isArray(ess)) setEssayages(ess.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
+
+      // Précharge les photos du catalogue AVANT de donner accès à l'app —
+      // avec une limite de 8 secondes pour ne jamais bloquer indéfiniment
+      // si une photo est lente ou cassée.
+      if (Array.isArray(r) && r.length) {
+        setLoadingStep(`Chargement des photos...`);
+        const photoUrls = r.map(x=>x.photo_url).filter(Boolean);
+        if (photoUrls.length) {
+          await Promise.race([
+            preloadImages(photoUrls),
+            new Promise(resolve => setTimeout(resolve, 8000)),
+          ]);
+        }
+      }
     }).catch(async (e) => {
       console.error(e);
       if (String(e.message||"").includes("Session expirée")) {
@@ -2226,6 +2270,8 @@ export default function App() {
     })();
     return () => { cancelled = true; if (channel) channel.unsubscribe(); };
   },[user]);
+
+  const TABS = [
     { id:"catalogue", label:"Catalogue", Icon:Package },
     { id:"essayages", label:"Essayages", Icon:Sparkles },
     { id:"resa",      label:"Résa",      Icon:Check },
@@ -2242,6 +2288,7 @@ export default function App() {
   if (recoveryToken) return <ResetPasswordScreen token={recoveryToken} onDone={() => setRecoveryToken(null)} />;
   if (!authChecked) return null;
   if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} initialPaymentEmail={pendingPaymentEmail} />;
+  if (loading) return <AppLoadingScreen step={loadingStep} />;
   const handleSignOut = async () => {
     if (!window.confirm("Se déconnecter de Plan Me ?")) return;
     setSigningOut(true);
@@ -2284,14 +2331,7 @@ export default function App() {
         </div>
       </div>
 
-      {loading && (
-        <div style={{ padding:40, textAlign:"center", color:T.gris, fontSize:14, fontWeight:700 }}>
-          Chargement...
-        </div>
-      )}
-
-      {!loading && (
-        <div className="tab-content" key={tab} style={{ paddingTop:16 }}>
+      <div className="tab-content" key={tab} style={{ paddingTop:16 }}>
           {tab==="catalogue" && <>
             {!seenTabs.catalogue && <OnboardingBubble tab="catalogue" onDismiss={()=>dismissOnboarding("catalogue")}/>}
             <Catalogue robes={robes} setRobes={setRobes} toast={showToast}/>
@@ -2314,8 +2354,7 @@ export default function App() {
             <Stats reservations={reservations} robes={robes}/>
           </>}
           {tab==="admin" && <AdminPanel/>}
-        </div>
-      )}
+      </div>
 
       {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
 
