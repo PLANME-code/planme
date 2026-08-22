@@ -484,6 +484,139 @@ function AuthScreen({ onAuth, initialError, initialPaymentEmail }) {
   );
 }
 
+function ResetPasswordScreen({ token, onDone }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const pwStrong = password.length>=8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+  const match = password && password === confirm;
+
+  const submit = async () => {
+    if (!pwStrong) { setError("Mot de passe trop faible — respecte les critères ci-dessous."); return; }
+    if (!match) { setError("Les deux mots de passe ne correspondent pas."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(data?.msg || data?.error_description || data?.error || "Erreur lors de la mise à jour du mot de passe");
+      setSuccess(true);
+    } catch(e) {
+      setError(e.message || "Une erreur est survenue.");
+    }
+    setLoading(false);
+  };
+
+  const inp = { width:"100%", background:T.fond, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+
+  return (
+    <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+      <div style={{ marginBottom:34, textAlign:"center" }}>
+        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+          Plan<span style={{ color:T.rose }}>me</span>
+        </div>
+      </div>
+      <div style={{ width:"100%", maxWidth:380, background:"#FFFFFF", borderRadius:10, padding:"26px 22px", boxShadow:"0 20px 50px rgba(0,0,0,.22)" }}>
+        {success ? (
+          <>
+            <div style={{ fontSize:34, textAlign:"center", marginBottom:10 }}>✅</div>
+            <div style={{ fontWeight:900, fontSize:16, color:T.encre, textAlign:"center", marginBottom:8 }}>Mot de passe mis à jour !</div>
+            <div style={{ fontSize:13, color:T.gris, textAlign:"center", marginBottom:20, lineHeight:1.5 }}>Tu peux maintenant te connecter avec ton nouveau mot de passe.</div>
+            <BtnPrimary onClick={onDone}>Aller à la connexion →</BtnPrimary>
+          </>
+        ) : (
+          <>
+            <div style={{ fontWeight:900, fontSize:17, color:T.encre, marginBottom:6 }}>Nouveau mot de passe</div>
+            <div style={{ fontSize:12, color:T.gris, marginBottom:18 }}>Choisis un nouveau mot de passe pour ton compte.</div>
+
+            <div style={{ marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Nouveau mot de passe</div>
+              <div style={{ position:"relative" }}>
+                <input value={password} onChange={e=>{setPassword(e.target.value); setError("");}} type={showPass?"text":"password"} placeholder="••••••••" style={{ ...inp, paddingRight:46 }}/>
+                <button onClick={()=>setShowPass(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16, color:T.gris }}>{showPass?"🙈":"👁️"}</button>
+              </div>
+            </div>
+            <PasswordStrength password={password}/>
+
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Confirmer le mot de passe</div>
+              <input value={confirm} onChange={e=>{setConfirm(e.target.value); setError("");}} type={showPass?"text":"password"} placeholder="••••••••" style={inp} onKeyDown={e=>e.key==="Enter"&&submit()}/>
+              {confirm && !match && <div style={{ fontSize:11, color:T.rose, fontWeight:700, marginTop:4 }}>Les mots de passe ne correspondent pas</div>}
+            </div>
+
+            {error && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>}
+
+            <button onClick={submit} disabled={loading||!pwStrong||!match} style={{ width:"100%", background:loading||!pwStrong||!match?T.gris:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:loading||!pwStrong||!match?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:loading||!pwStrong||!match?"none":`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+              {loading && <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid rgba(255,255,255,.3)", borderTop:"2.5px solid #fff", borderRadius:"50%", animation:"spin .7s linear infinite" }}/>}
+              {loading ? "Mise à jour..." : "Valider le nouveau mot de passe →"}
+            </button>
+          </>
+        )}
+        <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
+}
+
+function PayerRedirectScreen({ email }) {
+  const [error, setError] = useState("");
+  const [retrying, setRetrying] = useState(false);
+
+  const goPay = async () => {
+    setError("");
+    setRetrying(true);
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement");
+      window.location.href = data.url;
+    } catch(e) {
+      setError(e.message || "Une erreur est survenue.");
+      setRetrying(false);
+    }
+  };
+
+  useEffect(() => { goPay(); }, []);
+
+  return (
+    <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit", textAlign:"center" }}>
+      <div style={{ marginBottom:34 }}>
+        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+          Plan<span style={{ color:T.rose }}>me</span>
+        </div>
+      </div>
+      <div style={{ width:"100%", maxWidth:380, background:"#FFFFFF", borderRadius:10, padding:"32px 26px", boxShadow:"0 20px 50px rgba(0,0,0,.22)" }}>
+        {error ? (
+          <>
+            <div style={{ fontSize:34, marginBottom:10 }}>⚠️</div>
+            <div style={{ fontWeight:900, fontSize:16, color:T.encre, marginBottom:8 }}>Impossible de continuer</div>
+            <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>
+            <button onClick={goPay} disabled={retrying} style={{ width:"100%", background:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:"pointer", fontFamily:"inherit", boxShadow:`0 4px 16px ${T.vert}44` }}>Réessayer</button>
+          </>
+        ) : (
+          <>
+            <span style={{ display:"inline-block", width:28, height:28, border:"3px solid rgba(232,105,159,.25)", borderTop:`3px solid ${T.rose}`, borderRadius:"50%", animation:"spin .7s linear infinite", marginBottom:16 }}/>
+            <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>Redirection vers le paiement...</div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 function OnboardingBubble({ tab, onDismiss }) {
   const info = ONBOARDING[tab];
   if (!info) return null;
@@ -1720,7 +1853,11 @@ function AdminPanel() {
         const emailjs = await loadEmailJS();
         await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_APPROVE_ID, {
           to_email: email,
-          message: "Bonne nouvelle, ta demande d'accès à Plan Me a été validée ! Il ne reste plus qu'à finaliser le paiement pour débloquer ton accès complet — tu seras contactée sous peu avec les détails."
+          email_subject: "Ton accès Plan Me a été validé ! 🎉",
+          titre: "Ta demande a été validée !",
+          message: "Bonne nouvelle, ta demande d'accès à Plan Me a été validée ! Clique sur le bouton ci-dessous pour finaliser ton paiement et débloquer ton accès complet.",
+          lien_action: `${window.location.origin}/?payer=${encodeURIComponent(email.toLowerCase().trim())}`,
+          texte_bouton: "Payer et débloquer mon accès",
         });
       } catch(e) { console.error("Erreur envoi email approbation:", e); }
     }
@@ -1872,6 +2009,19 @@ export default function App() {
   // Vérifier session existante au démarrage + gérer confirmation email
   const [pendingAuthError, setPendingAuthError] = useState("");
   const [pendingPaymentEmail, setPendingPaymentEmail] = useState("");
+  const [recoveryToken, setRecoveryToken] = useState(null);
+  const [payerEmail, setPayerEmail] = useState(null);
+
+  // Lien direct de paiement envoyé par email (?payer=email@x.com) — pas besoin
+  // d'être connectée, redirige directement vers Stripe.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get('payer');
+    if (p) {
+      setPayerEmail(p);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
   useEffect(() => {
     (async () => {
       // Vérifier si on revient d'une confirmation email (hash dans l'URL)
@@ -1879,6 +2029,17 @@ export default function App() {
       if (hash && hash.includes('access_token')) {
         const params = new URLSearchParams(hash.replace('#',''));
         const token = params.get('access_token');
+        const linkType = params.get('type');
+
+        // Lien "mot de passe oublié" : on affiche le vrai formulaire de
+        // réinitialisation, on ne connecte PAS automatiquement.
+        if (token && linkType === 'recovery') {
+          window.history.replaceState({}, '', window.location.pathname);
+          setRecoveryToken(token);
+          setAuthChecked(true);
+          return;
+        }
+
         if (token) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
@@ -1969,6 +2130,8 @@ export default function App() {
 
   const [signingOut, setSigningOut] = useState(false);
 
+  if (payerEmail) return <PayerRedirectScreen email={payerEmail} />;
+  if (recoveryToken) return <ResetPasswordScreen token={recoveryToken} onDone={() => setRecoveryToken(null)} />;
   if (!authChecked) return null;
   if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} initialPaymentEmail={pendingPaymentEmail} />;
   const handleSignOut = async () => {
