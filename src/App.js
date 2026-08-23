@@ -1261,18 +1261,25 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
   );
 }
 
+// Formatte une Date en YYYY-MM-DD en heure LOCALE (évite le bug de décalage
+// d'un jour de toISOString(), qui convertit en UTC et peut faire sauter au
+// jour précédent selon l'heure et le fuseau horaire de l'utilisatrice).
+const fmtLocal = (d) => {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), j = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${j}`;
+};
 // Lundi de la semaine contenant la date donnée (format YYYY-MM-DD)
 const lundiDeLaSemaine = (dateStr) => {
   const d = new Date(dateStr + "T00:00:00");
   const jour = d.getDay(); // 0=dimanche, 1=lundi...
   const decalage = jour===0 ? -6 : 1-jour;
   d.setDate(d.getDate()+decalage);
-  return d.toISOString().slice(0,10);
+  return fmtLocal(d);
 };
 const ajouterJours = (dateStr, n) => {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate()+n);
-  return d.toISOString().slice(0,10);
+  return fmtLocal(d);
 };
 
 // ── PLANNING ─────────────────────────────────────────────────
@@ -1329,7 +1336,8 @@ function Planning({ reservations, robes, clientes }) {
 
       {/* Zone imprimable — invisible à l'écran, visible uniquement en impression */}
       <div className="print-only" style={{ display:"none" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", borderBottom:"3px solid #1C1B17", paddingBottom:14, marginBottom:18 }}>
+        <div style={{ maxWidth:1000, margin:"0 auto", padding:"20px 30px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", borderBottom:"3px solid #1C1B17", paddingBottom:14, marginBottom:20 }}>
           <div>
             <div style={{ fontFamily:"Georgia, serif", fontSize:26, fontWeight:700, color:"#1C1B17" }}>Plan<span style={{ color:"#E8699F", fontStyle:"italic" }}>me</span></div>
             <div style={{ fontSize:11, color:"#666", marginTop:2, textTransform:"uppercase", letterSpacing:".08em" }}>Planning des réservations</div>
@@ -1342,21 +1350,7 @@ function Planning({ reservations, robes, clientes }) {
           </div>
         </div>
 
-        <div style={{ display:"flex", gap:10, marginBottom:18 }}>
-          {[
-            { l:"Réservations", v:resasSemaine.length },
-            { l:"CA prévu", v:`${resasSemaine.reduce((s,r)=>s+(+r.prix||0),0)}€` },
-            { l:"Reste à percevoir", v:`${resasSemaine.reduce((s,r)=>s+((+r.prix||0)-(+r.acompte||0)),0)}€` },
-            { l:"Total cautions", v:`${resasSemaine.reduce((s,r)=>s+(+r.caution||0),0)}€` },
-          ].map(b => (
-            <div key={b.l} style={{ flex:1, border:"1.5px solid #E8E4DC", borderRadius:8, padding:"10px 12px" }}>
-              <div style={{ fontSize:9, color:"#999", textTransform:"uppercase", letterSpacing:".07em", marginBottom:3 }}>{b.l}</div>
-              <div style={{ fontSize:16, fontWeight:800, color:"#1C1B17" }}>{b.v}</div>
-            </div>
-          ))}
-        </div>
-
-        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11.5 }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11.5, margin:"0 auto" }}>
           <thead>
             <tr>
               {["Photo","Cliente","Pièce","Début","Fin","Prix","Acompte","Reste","Caution","Statut","Note"].map(h=>(
@@ -1375,10 +1369,10 @@ function Planning({ reservations, robes, clientes }) {
               const archivee = r.statut==="confirmee" ? r.fin<TODAY : r.statut==="terminee";
               return (
                 <tr key={r.id} style={{ background:i%2?"#FAF8F5":"transparent" }}>
-                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"5px 8px" }}>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"8px" }}>
                     {robe?.photo_url
-                      ? <img src={robe.photo_url} alt={robe.nom} style={{ width:34, height:34, borderRadius:5, objectFit:"cover", display:"block" }} />
-                      : <div style={{ width:34, height:34, borderRadius:5, background:"#E8E4DC" }} />
+                      ? <img src={robe.photo_url} alt={robe.nom} style={{ width:56, height:56, borderRadius:7, objectFit:"cover", display:"block" }} />
+                      : <div style={{ width:56, height:56, borderRadius:7, background:"#E8E4DC" }} />
                     }
                   </td>
                   <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px", fontWeight:700 }}>{cl?.nom}</td>
@@ -1396,6 +1390,7 @@ function Planning({ reservations, robes, clientes }) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
       <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:10, textTransform:"capitalize" }}>
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
