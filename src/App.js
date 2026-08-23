@@ -1285,6 +1285,11 @@ function Planning({ reservations, robes, clientes }) {
                   </div>
                   <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
                 </div>
+                {r.note && (
+                  <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"9px 12px", marginBottom:8, fontSize:12, color:T.rose, fontWeight:700, fontStyle:"italic" }}>
+                    ⚠️ {r.note}
+                  </div>
+                )}
                 <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:8, padding:"9px 12px", fontSize:11, color:"#8B3020", fontWeight:600 }}>
                   🚫 {robe?.nom} grisée du {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} au {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} — double réservation impossible
                 </div>
@@ -1417,9 +1422,14 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 </div>
                 <span style={{ background:(statCol[r.statut]||T.gris)+"1A", color:statCol[r.statut]||T.gris, border:`1px solid ${statCol[r.statut]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[r.statut]||r.statut}</span>
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:T.gris, marginBottom:r.prix>0?8:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:T.gris, marginBottom:r.note?8:(r.prix>0?8:0) }}>
                 <Clock size={12}/> {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} → {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}
               </div>
+              {r.note && (
+                <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"7px 11px", marginBottom:r.prix>0?8:0, fontSize:11.5, color:T.rose, fontWeight:700, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}>
+                  ⚠️ {r.note}
+                </div>
+              )}
               {r.prix>0 && (
                 <div style={{ background:r.statut==="terminee"?T.vertL:reste>0?"#FFF0EC":T.vertL, borderRadius:8, padding:"8px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <span style={{ fontSize:12, color:T.gris, fontWeight:600 }}>{r.statut==="terminee"?"Soldée ✓":`Reste à payer`}</span>
