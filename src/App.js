@@ -1279,6 +1279,10 @@ function Planning({ reservations, robes, clientes }) {
             return (
               <div key={r.id} style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
+                  {robe?.photo_url
+                    ? <img src={robe.photo_url} alt={robe.nom} style={{width:44,height:44,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+                    : <Avatar color={robe?.shade} nom={robe?.nom} size={44}/>
+                  }
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
                     <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{robe?.nom}</div>
