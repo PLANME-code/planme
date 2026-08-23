@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, ChevronLeft, ChevronRight, Clock, TrendingUp, AlertCircle, Settings, LogOut, Edit3, Trash2 } from "lucide-react";
 
 const SUPABASE_URL = "https://drgiyafkcmfydkabctxa.supabase.co";
@@ -1334,9 +1335,11 @@ function Planning({ reservations, robes, clientes }) {
         <button onClick={imprimer} style={{ width:"100%", background:T.rose, color:"#fff", border:"none", borderRadius:10, padding:"12px", fontWeight:900, fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>🖨️ Imprimer / Enregistrer en PDF</button>
       </div>
 
-      {/* Zone imprimable — invisible à l'écran, visible uniquement en impression */}
+      {/* Zone imprimable — rendue hors du conteneur de l'app (position:portal) pour ne pas
+          être bridée par sa largeur max de 430px, invisible à l'écran, visible qu'à l'impression */}
+      {createPortal(
       <div className="print-only" style={{ display:"none" }}>
-        <div style={{ maxWidth:1000, margin:"0 auto", padding:"20px 30px" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:"20px 30px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", borderBottom:"3px solid #1C1B17", paddingBottom:14, marginBottom:20 }}>
           <div>
             <div style={{ fontFamily:"Georgia, serif", fontSize:26, fontWeight:700, color:"#1C1B17" }}>Plan<span style={{ color:"#E8699F", fontStyle:"italic" }}>me</span></div>
@@ -1350,7 +1353,13 @@ function Planning({ reservations, robes, clientes }) {
           </div>
         </div>
 
-        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11.5, margin:"0 auto" }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11.5, margin:"0 auto", tableLayout:"fixed" }}>
+          <colgroup>
+            <col style={{width:"7%"}}/><col style={{width:"12%"}}/><col style={{width:"20%"}}/>
+            <col style={{width:"7%"}}/><col style={{width:"7%"}}/><col style={{width:"6%"}}/>
+            <col style={{width:"7%"}}/><col style={{width:"6%"}}/><col style={{width:"7%"}}/>
+            <col style={{width:"8%"}}/><col style={{width:"13%"}}/>
+          </colgroup>
           <thead>
             <tr>
               {["Photo","Cliente","Pièce","Début","Fin","Prix","Acompte","Reste","Caution","Statut","Note"].map(h=>(
@@ -1392,6 +1401,7 @@ function Planning({ reservations, robes, clientes }) {
         </table>
         </div>
       </div>
+      , document.body)}
       <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:10, textTransform:"capitalize" }}>
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
       </div>
