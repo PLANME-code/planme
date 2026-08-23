@@ -1280,18 +1280,18 @@ function Planning({ reservations, robes, clientes }) {
               <div key={r.id} style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
                   {robe?.photo_url
-                    ? <img src={robe.photo_url} alt={robe.nom} style={{width:44,height:44,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
-                    : <Avatar color={robe?.shade} nom={robe?.nom} size={44}/>
+                    ? <img src={robe.photo_url} alt={robe.nom} style={{width:60,height:60,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
+                    : <Avatar color={robe?.shade} nom={robe?.nom} size={60}/>
                   }
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
-                    <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{robe?.nom}</div>
+                    <div style={{ fontSize:14, fontWeight:700, color:T.encre, marginTop:2 }}>{robe?.nom}</div>
                   </div>
                   <span style={{ background:(r.fin<TODAY?T.gris:T.rose)+"1A", color:r.fin<TODAY?T.gris:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{r.fin<TODAY?"Archivée":"Confirmée"}</span>
                 </div>
-                {r.note && (
+                {cleanNote(r.note) && (
                   <div style={{ background:"#FCEAEA", border:`1.5px solid #D6293A44`, borderRadius:8, padding:"9px 12px", fontSize:12, color:"#D6293A", fontWeight:700, fontStyle:"italic" }}>
-                    ⚠️ {r.note}
+                    ⚠️ {cleanNote(r.note)}
                   </div>
                 )}
               </div>
@@ -1303,6 +1303,12 @@ function Planning({ reservations, robes, clientes }) {
 }
 
 // ── RÉSERVATIONS ─────────────────────────────────────────────
+// Nettoie les anciennes notes qui contenaient encore le préfixe "Prix modifié (catalogue: X€) · "
+const cleanNote = (note) => {
+  if (!note) return note;
+  return note.replace(/^Prix modifié\s*\(catalogue:\s*[\d.,]+€\)\s*(·\s*)?/i, "").trim();
+};
+
 function Reservations({ reservations, setReservations, robes, clientes, setClientes, toast }) {
   const [modal, setModal] = useState(false);
   const [detail, setDetail] = useState(null);
@@ -1416,20 +1422,20 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
             <div key={r.id} onClick={()=>setDetail({r,robe,cl,reste})} className="tap-card card-anim" style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"13px 15px", marginBottom:10, cursor:"pointer", boxShadow:"0 2px 10px rgba(31,58,46,.07)", animationDelay:`${Math.min(i*40,320)}ms` }}>
               <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
                                 {robe?.photo_url
-                  ? <img src={robe.photo_url} alt={robe.nom} style={{width:44,height:44,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
-                  : <Avatar color={robe?.shade} nom={robe?.nom} size={44}/>
+                  ? <img src={robe.photo_url} alt={robe.nom} style={{width:60,height:60,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
+                  : <Avatar color={robe?.shade} nom={robe?.nom} size={60}/>
                 } <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
-                  <div style={{ fontSize:12, color:T.gris }}>{robe?.nom}</div>
+                  <div style={{ fontSize:14, fontWeight:700, color:T.encre }}>{robe?.nom}</div>
                 </div>
                 <span style={{ background:(statCol[statutEffectif(r)]||T.gris)+"1A", color:statCol[statutEffectif(r)]||T.gris, border:`1px solid ${statCol[statutEffectif(r)]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[statutEffectif(r)]||statutEffectif(r)}</span>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:T.gris, marginBottom:r.note?8:(r.prix>0?8:0) }}>
                 <Clock size={12}/> {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} → {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}
               </div>
-              {r.note && (
+              {cleanNote(r.note) && (
                 <div style={{ background:"#FCEAEA", border:`1.5px solid #D6293A44`, borderRadius:8, padding:"7px 11px", marginBottom:r.prix>0?8:0, fontSize:11.5, color:"#D6293A", fontWeight:700, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}>
-                  ⚠️ {r.note}
+                  ⚠️ {cleanNote(r.note)}
                 </div>
               )}
               {r.prix>0 && (
@@ -1502,7 +1508,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               </div>
               <div style={{ fontSize:11, color:T.gris, fontWeight:600 }}>Chèque caution — séparé du prix · à rendre à la fin</div>
             </div>
-            {detail.r.note && <div style={{ background:"#FCEAEA", border:`1.5px solid #D6293A44`, borderRadius:10, padding:"10px 14px", marginBottom:10, fontSize:12, color:"#D6293A", fontWeight:600, fontStyle:"italic" }}>{detail.r.note}</div>}
+            {cleanNote(detail.r.note) && <div style={{ background:"#FCEAEA", border:`1.5px solid #D6293A44`, borderRadius:10, padding:"10px 14px", marginBottom:10, fontSize:12, color:"#D6293A", fontWeight:600, fontStyle:"italic" }}>{cleanNote(detail.r.note)}</div>}
             {/* Boutons modifier / supprimer */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
               <button onClick={()=>{
