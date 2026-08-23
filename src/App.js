@@ -1319,13 +1319,20 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [formError, setFormError] = useState("");
   const [robeQuery, setRobeQuery] = useState("");
 
+  const [vue, setVue] = useState("actives"); // actives | archivees | toutes
+
   const suggestions = form.nom.trim().length>0
     ? clientes.filter(c => c.nom.toLowerCase().includes(form.nom.trim().toLowerCase())).slice(0,6)
     : [];
 
   const filtered = reservations.filter(r => {
     const cl = clientes.find(x=>x.id===r.cid);
-    return !q || cl?.nom.toLowerCase().includes(q.toLowerCase());
+    const matchQ = !q || cl?.nom.toLowerCase().includes(q.toLowerCase());
+    if (!matchQ) return false;
+    const estArchivee = r.statut==="confirmee" ? r.fin < TODAY : r.statut==="terminee";
+    if (vue==="actives") return !estArchivee;
+    if (vue==="archivees") return estArchivee;
+    return true; // toutes
   });
 
   const robesFiltrees = robes.filter(r => !robeQuery.trim() || r.nom.toLowerCase().includes(robeQuery.trim().toLowerCase()));
@@ -1410,6 +1417,11 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
         <div style={{ position:"relative", marginBottom:12 }}>
           <Search size={15} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }}/>
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }}/>
+        </div>
+        <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+          {[{k:"actives",l:"Actives"},{k:"archivees",l:"Archivées"},{k:"toutes",l:"Toutes"}].map(o => (
+            <button key={o.k} onClick={()=>setVue(o.k)} style={{ flex:1, padding:"7px 0", borderRadius:100, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:800, background:vue===o.k?T.rose:T.roseL, color:vue===o.k?"#fff":T.rose }}>{o.l}</button>
+          ))}
         </div>
         <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} réservation{filtered.length>1?"s":""}</div>
       </div>
@@ -2404,4 +2416,3 @@ export default function App() {
     </div>
   );
 }
-     
