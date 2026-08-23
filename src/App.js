@@ -1329,32 +1329,68 @@ function Planning({ reservations, robes, clientes }) {
 
       {/* Zone imprimable — invisible à l'écran, visible uniquement en impression */}
       <div className="print-only" style={{ display:"none" }}>
-        <h1 style={{ fontSize:18, marginBottom:4 }}>Réservations — semaine du {new Date(semaineImpr+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})} au {new Date(finSemaine+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</h1>
-        <table style={{ width:"100%", borderCollapse:"collapse", marginTop:12, fontSize:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", borderBottom:"3px solid #1C1B17", paddingBottom:14, marginBottom:18 }}>
+          <div>
+            <div style={{ fontFamily:"Georgia, serif", fontSize:26, fontWeight:700, color:"#1C1B17" }}>Plan<span style={{ color:"#E8699F", fontStyle:"italic" }}>me</span></div>
+            <div style={{ fontSize:11, color:"#666", marginTop:2, textTransform:"uppercase", letterSpacing:".08em" }}>Planning des réservations</div>
+          </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:15, fontWeight:800, color:"#1C1B17", textTransform:"capitalize" }}>
+              {new Date(semaineImpr+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long"})} → {new Date(finSemaine+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}
+            </div>
+            <div style={{ fontSize:10, color:"#999", marginTop:2 }}>Semaine complète · Lundi → Dimanche</div>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, marginBottom:18 }}>
+          {[
+            { l:"Réservations", v:resasSemaine.length },
+            { l:"CA prévu", v:`${resasSemaine.reduce((s,r)=>s+(+r.prix||0),0)}€` },
+            { l:"Reste à percevoir", v:`${resasSemaine.reduce((s,r)=>s+((+r.prix||0)-(+r.acompte||0)),0)}€` },
+            { l:"Total cautions", v:`${resasSemaine.reduce((s,r)=>s+(+r.caution||0),0)}€` },
+          ].map(b => (
+            <div key={b.l} style={{ flex:1, border:"1.5px solid #E8E4DC", borderRadius:8, padding:"10px 12px" }}>
+              <div style={{ fontSize:9, color:"#999", textTransform:"uppercase", letterSpacing:".07em", marginBottom:3 }}>{b.l}</div>
+              <div style={{ fontSize:16, fontWeight:800, color:"#1C1B17" }}>{b.v}</div>
+            </div>
+          ))}
+        </div>
+
+        <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11.5 }}>
           <thead>
             <tr>
-              {["Cliente","Pièce","Début","Fin","Prix","Acompte","Reste","Statut","Note"].map(h=>(
-                <th key={h} style={{ textAlign:"left", borderBottom:"2px solid #000", padding:"6px 8px" }}>{h}</th>
+              {["Photo","Cliente","Pièce","Début","Fin","Prix","Acompte","Reste","Caution","Statut","Note"].map(h=>(
+                <th key={h} style={{ textAlign:"left", borderBottom:"2px solid #1C1B17", padding:"7px 8px", fontSize:10, textTransform:"uppercase", letterSpacing:".04em", color:"#555" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {resasSemaine.map(r => {
+            {resasSemaine.length===0 && (
+              <tr><td colSpan={11} style={{ padding:"20px 8px", textAlign:"center", color:"#999", fontStyle:"italic" }}>Aucune réservation cette semaine</td></tr>
+            )}
+            {resasSemaine.map((r,i) => {
               const robe = robes.find(x=>x.id===r.rid);
               const cl = clientes.find(x=>x.id===r.cid);
               const reste = (r.prix||0)-(r.acompte||0);
               const archivee = r.statut==="confirmee" ? r.fin<TODAY : r.statut==="terminee";
               return (
-                <tr key={r.id}>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{cl?.nom}</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{robe?.nom}</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{r.prix}€</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{r.acompte}€</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{reste}€</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{archivee?"Archivée":"Confirmée"}</td>
-                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{cleanNote(r.note)||""}</td>
+                <tr key={r.id} style={{ background:i%2?"#FAF8F5":"transparent" }}>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"5px 8px" }}>
+                    {robe?.photo_url
+                      ? <img src={robe.photo_url} alt={robe.nom} style={{ width:34, height:34, borderRadius:5, objectFit:"cover", display:"block" }} />
+                      : <div style={{ width:34, height:34, borderRadius:5, background:"#E8E4DC" }} />
+                    }
+                  </td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px", fontWeight:700 }}>{cl?.nom}</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px" }}>{robe?.nom}</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px" }}>{new Date(r.debut).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px" }}>{new Date(r.fin).toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px" }}>{r.prix}€</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px" }}>{r.acompte}€</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px", fontWeight:700, color:reste>0?"#D6293A":"#1C1B17" }}>{reste}€</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px" }}>{r.caution?`${r.caution}€`:"—"}</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px" }}>{archivee?"Archivée":"Confirmée"}</td>
+                  <td style={{ borderBottom:"1px solid #E8E4DC", padding:"7px 8px", fontStyle:"italic", color:"#D6293A" }}>{cleanNote(r.note)||""}</td>
                 </tr>
               );
             })}
