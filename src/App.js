@@ -873,7 +873,7 @@ function Catalogue({ robes, setRobes, toast }) {
       <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
         {filtered.map((r,i) => (
           <div key={r.id} onClick={() => setDetail(r)} className="robe-card card-anim" style={{ background:T.blanc, borderRadius:14, overflow:"hidden", cursor:"pointer", boxShadow:"0 1px 3px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.05)", animationDelay:`${Math.min(i*40,320)}ms` }}>
-            <div style={{ aspectRatio:"1", position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ aspectRatio:"3/4", position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               {r.photo_url
                 ? <img src={r.photo_url} alt={r.nom} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
                 : <Avatar color={r.shade} nom={r.nom} size={44} />
