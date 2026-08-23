@@ -201,6 +201,7 @@ const injectStyles = () => {
   const s = document.createElement('style');
   s.id = 'planme-styles';
   s.textContent = `
+    html, body { background: #FFFFFF; overscroll-behavior-y: none; }
     @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap');
     * { -webkit-tap-highlight-color: transparent; }
     @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
