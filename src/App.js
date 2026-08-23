@@ -1284,7 +1284,7 @@ function Planning({ reservations, robes, clientes }) {
                     : <Avatar color={robe?.shade} nom={robe?.nom} size={60}/>
                   }
                   <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
+                    <div style={{ fontWeight:800, fontSize:15, color:T.rose2 }}>{cl?.nom}</div>
                     <div style={{ fontSize:14, fontWeight:700, color:T.encre, marginTop:2 }}>{robe?.nom}</div>
                   </div>
                   <span style={{ background:(r.fin<TODAY?T.gris:T.rose)+"1A", color:r.fin<TODAY?T.gris:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{r.fin<TODAY?"Archivée":"Confirmée"}</span>
@@ -1425,7 +1425,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                   ? <img src={robe.photo_url} alt={robe.nom} style={{width:60,height:60,borderRadius:9,objectFit:"cover",flexShrink:0}}/>
                   : <Avatar color={robe?.shade} nom={robe?.nom} size={60}/>
                 } <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
+                  <div style={{ fontWeight:800, fontSize:14, color:T.rose2 }}>{cl?.nom}</div>
                   <div style={{ fontSize:14, fontWeight:700, color:T.encre }}>{robe?.nom}</div>
                 </div>
                 <span style={{ background:(statCol[statutEffectif(r)]||T.gris)+"1A", color:statCol[statutEffectif(r)]||T.gris, border:`1px solid ${statCol[statutEffectif(r)]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[statutEffectif(r)]||statutEffectif(r)}</span>
@@ -2404,3 +2404,4 @@ export default function App() {
     </div>
   );
 }
+     
