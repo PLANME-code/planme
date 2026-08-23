@@ -1287,10 +1287,10 @@ function Planning({ reservations, robes, clientes }) {
                     <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
                     <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{robe?.nom}</div>
                   </div>
-                  <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
+                  <span style={{ background:(r.fin<TODAY?T.gris:T.rose)+"1A", color:r.fin<TODAY?T.gris:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{r.fin<TODAY?"Archivée":"Confirmée"}</span>
                 </div>
                 {r.note && (
-                  <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"9px 12px", fontSize:12, color:T.rose, fontWeight:700, fontStyle:"italic" }}>
+                  <div style={{ background:"#FCEAEA", border:`1.5px solid #D6293A44`, borderRadius:8, padding:"9px 12px", fontSize:12, color:"#D6293A", fontWeight:700, fontStyle:"italic" }}>
                     ⚠️ {r.note}
                   </div>
                 )}
@@ -1347,7 +1347,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       }
 
       const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
-      const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
+      const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.note, user_id:_userId };
 
       if (editResaId) {
         await api("PATCH",`reservations?id=eq.${editResaId}`,data);
@@ -1394,8 +1394,9 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     }
   };
 
-  const statCol = { confirmee:T.rose, enCours:T.vert, terminee:T.gris };
-  const statLbl = { confirmee:"Confirmée", enCours:"En cours", terminee:"Terminée" };
+  const statCol = { confirmee:T.rose, enCours:T.vert, terminee:T.gris, archivee:T.gris };
+  const statLbl = { confirmee:"Confirmée", enCours:"En cours", terminee:"Terminée", archivee:"Archivée" };
+  const statutEffectif = (r) => (r.statut==="confirmee" && r.fin < TODAY) ? "archivee" : r.statut;
 
   return (
     <div>
@@ -1421,13 +1422,13 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                   <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
                   <div style={{ fontSize:12, color:T.gris }}>{robe?.nom}</div>
                 </div>
-                <span style={{ background:(statCol[r.statut]||T.gris)+"1A", color:statCol[r.statut]||T.gris, border:`1px solid ${statCol[r.statut]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[r.statut]||r.statut}</span>
+                <span style={{ background:(statCol[statutEffectif(r)]||T.gris)+"1A", color:statCol[statutEffectif(r)]||T.gris, border:`1px solid ${statCol[statutEffectif(r)]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[statutEffectif(r)]||statutEffectif(r)}</span>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:T.gris, marginBottom:r.note?8:(r.prix>0?8:0) }}>
                 <Clock size={12}/> {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} → {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}
               </div>
               {r.note && (
-                <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"7px 11px", marginBottom:r.prix>0?8:0, fontSize:11.5, color:T.rose, fontWeight:700, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}>
+                <div style={{ background:"#FCEAEA", border:`1.5px solid #D6293A44`, borderRadius:8, padding:"7px 11px", marginBottom:r.prix>0?8:0, fontSize:11.5, color:"#D6293A", fontWeight:700, fontStyle:"italic", display:"flex", alignItems:"flex-start", gap:6 }}>
                   ⚠️ {r.note}
                 </div>
               )}
@@ -1454,7 +1455,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               <div>
                 <div style={{ fontWeight:900, fontSize:17, color:T.encre }}>{detail.cl?.nom}</div>
                 <div style={{ fontSize:12, color:T.gris, marginTop:3 }}>{detail.cl?.tel}</div>
-                <span style={{ marginTop:6, display:"inline-block", background:(statCol[detail.r.statut]||T.gris)+"1A", color:statCol[detail.r.statut]||T.gris, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[detail.r.statut]||detail.r.statut}</span>
+                <span style={{ marginTop:6, display:"inline-block", background:(statCol[statutEffectif(detail.r)]||T.gris)+"1A", color:statCol[statutEffectif(detail.r)]||T.gris, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[statutEffectif(detail.r)]||statutEffectif(detail.r)}</span>
               </div>
             </div>
             <div style={{ background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:12, display:"flex", gap:12, alignItems:"center" }}>
@@ -1501,7 +1502,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               </div>
               <div style={{ fontSize:11, color:T.gris, fontWeight:600 }}>Chèque caution — séparé du prix · à rendre à la fin</div>
             </div>
-            {detail.r.note && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:10, padding:"10px 14px", marginBottom:10, fontSize:12, color:T.rose, fontWeight:600, fontStyle:"italic" }}>{detail.r.note}</div>}
+            {detail.r.note && <div style={{ background:"#FCEAEA", border:`1.5px solid #D6293A44`, borderRadius:10, padding:"10px 14px", marginBottom:10, fontSize:12, color:"#D6293A", fontWeight:600, fontStyle:"italic" }}>{detail.r.note}</div>}
             {/* Boutons modifier / supprimer */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
               <button onClick={()=>{
