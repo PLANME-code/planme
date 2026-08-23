@@ -202,6 +202,12 @@ const injectStyles = () => {
   s.id = 'planme-styles';
   s.textContent = `
     html, body { background: #FFFFFF; overscroll-behavior-y: none; }
+    .print-only { display:none; }
+    @media print {
+      body * { visibility: hidden; }
+      .print-only, .print-only * { visibility: visible; }
+      .print-only { display:block !important; position:absolute; top:0; left:0; width:100%; }
+    }
     @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap');
     * { -webkit-tap-highlight-color: transparent; }
     @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
@@ -1255,10 +1261,31 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
   );
 }
 
+// Lundi de la semaine contenant la date donnée (format YYYY-MM-DD)
+const lundiDeLaSemaine = (dateStr) => {
+  const d = new Date(dateStr + "T00:00:00");
+  const jour = d.getDay(); // 0=dimanche, 1=lundi...
+  const decalage = jour===0 ? -6 : 1-jour;
+  d.setDate(d.getDate()+decalage);
+  return d.toISOString().slice(0,10);
+};
+const ajouterJours = (dateStr, n) => {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+};
+
 // ── PLANNING ─────────────────────────────────────────────────
 function Planning({ reservations, robes, clientes }) {
   const [mois, setMois] = useState(new Date());
   const [sel, setSel] = useState(TODAY);
+  const [semaineImpr, setSemaineImpr] = useState(lundiDeLaSemaine(TODAY));
+
+  const finSemaine = ajouterJours(semaineImpr, 6);
+  const resasSemaine = reservations.filter(r => r.debut<=finSemaine && r.fin>=semaineImpr)
+    .sort((a,b)=> a.debut.localeCompare(b.debut));
+
+  const imprimer = () => window.print();
 
   const cells = buildCal(mois, reservations.map(r => ({ debut:r.debut, fin:r.fin })));
   const dayRes = reservations.filter(r => r.debut<=sel && r.fin>=sel);
@@ -1284,6 +1311,55 @@ function Planning({ reservations, robes, clientes }) {
       </div>
       <div style={{ background:T.vertL, border:`1.5px solid ${T.vert}33`, borderRadius:10, padding:"10px 14px", marginBottom:12, fontSize:12, color:T.vert, fontWeight:700 }}>
         📅 Planning des réservations · distinct du planning essayages
+      </div>
+
+      {/* Impression PDF par semaine */}
+      <div className="no-print" style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:14, marginBottom:14, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
+        <div style={{ fontSize:11, fontWeight:800, color:T.gris, textTransform:"uppercase", letterSpacing:".08em", marginBottom:8 }}>Imprimer / PDF par semaine</div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+          <button onClick={()=>setSemaineImpr(ajouterJours(semaineImpr,-7))} style={{ width:34, height:34, borderRadius:8, background:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:T.encre }}>‹</button>
+          <div style={{ flex:1, textAlign:"center", fontWeight:800, fontSize:13, color:T.encre }}>
+            {new Date(semaineImpr+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} → {new Date(finSemaine+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}
+          </div>
+          <button onClick={()=>setSemaineImpr(ajouterJours(semaineImpr,7))} style={{ width:34, height:34, borderRadius:8, background:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:T.encre }}>›</button>
+        </div>
+        <div style={{ fontSize:12, color:T.gris, marginBottom:10 }}>{resasSemaine.length} réservation{resasSemaine.length>1?"s":""} cette semaine</div>
+        <button onClick={imprimer} style={{ width:"100%", background:T.rose, color:"#fff", border:"none", borderRadius:10, padding:"12px", fontWeight:900, fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>🖨️ Imprimer / Enregistrer en PDF</button>
+      </div>
+
+      {/* Zone imprimable — invisible à l'écran, visible uniquement en impression */}
+      <div className="print-only" style={{ display:"none" }}>
+        <h1 style={{ fontSize:18, marginBottom:4 }}>Réservations — semaine du {new Date(semaineImpr+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})} au {new Date(finSemaine+"T00:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</h1>
+        <table style={{ width:"100%", borderCollapse:"collapse", marginTop:12, fontSize:12 }}>
+          <thead>
+            <tr>
+              {["Cliente","Pièce","Début","Fin","Prix","Acompte","Reste","Statut","Note"].map(h=>(
+                <th key={h} style={{ textAlign:"left", borderBottom:"2px solid #000", padding:"6px 8px" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {resasSemaine.map(r => {
+              const robe = robes.find(x=>x.id===r.rid);
+              const cl = clientes.find(x=>x.id===r.cid);
+              const reste = (r.prix||0)-(r.acompte||0);
+              const archivee = r.statut==="confirmee" ? r.fin<TODAY : r.statut==="terminee";
+              return (
+                <tr key={r.id}>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{cl?.nom}</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{robe?.nom}</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{r.prix}€</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{r.acompte}€</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{reste}€</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{archivee?"Archivée":"Confirmée"}</td>
+                  <td style={{ borderBottom:"1px solid #ccc", padding:"6px 8px" }}>{cleanNote(r.note)||""}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
       <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:10, textTransform:"capitalize" }}>
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
