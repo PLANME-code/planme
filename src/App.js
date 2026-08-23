@@ -755,12 +755,14 @@ function Modal({ open, onClose, title, children }) {
   if (!open) return null;
   return (
     <div onClick={e => e.target===e.currentTarget && onClose()} style={{ position:"fixed", inset:0, background:"rgba(26,46,31,.4)", zIndex:500, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", maxWidth:430, margin:"0 auto", background:T.blanc, borderRadius:"24px 24px 0 0", maxHeight:"92vh", overflowY:"auto", boxShadow:"0 -8px 40px rgba(0,0,0,.2)" }}>
+      <div style={{ width:"100%", maxWidth:430, margin:"0 auto", background:T.blanc, borderRadius:"24px 24px 0 0", maxHeight:"90dvh", overflowY:"auto", boxShadow:"0 -8px 40px rgba(0,0,0,.2)" }}>
         <div style={{ padding:"0 18px" }}>
-          <div style={{ width:36, height:4, borderRadius:100, background:T.vertM, margin:"12px auto 14px" }} />
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
-            <span style={{ fontWeight:900, fontSize:17, color:T.encre }}>{title}</span>
-            <button onClick={onClose} style={{ background:T.fond, border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><X size={16} color={T.gris}/></button>
+          <div style={{ position:"sticky", top:0, background:T.blanc, zIndex:2, paddingTop:1 }}>
+            <div style={{ width:36, height:4, borderRadius:100, background:T.vertM, margin:"12px auto 14px" }} />
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18, paddingBottom:2 }}>
+              <span style={{ fontWeight:900, fontSize:17, color:T.encre }}>{title}</span>
+              <button onClick={onClose} style={{ background:T.fond, border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><X size={16} color={T.gris}/></button>
+            </div>
           </div>
           <div style={{ paddingBottom:100 }}>{children}</div>
         </div>
@@ -791,13 +793,22 @@ function BtnPrimary({ onClick, disabled, children }) {
 // ── CATALOGUE ────────────────────────────────────────────────
 function Catalogue({ robes, setRobes, toast }) {
   const [q, setQ] = useState("");
+  const [tri, setTri] = useState("recent"); // recent | prix_asc | prix_desc | az
   const [modal, setModal] = useState(false);
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState({ nom:"", categorie:"", tailleMin:"", tailleMax:"", prix:"", caution:"", photoFile:null, photoPreview:null });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  const filtered = useMemo(() => robes.filter(r => r.nom?.toLowerCase().includes(q.toLowerCase())), [robes, q]);
+  const filtered = useMemo(() => {
+    const arr = robes.filter(r => r.nom?.toLowerCase().includes(q.toLowerCase()));
+    const sorted = [...arr];
+    if (tri==="prix_asc") sorted.sort((a,b)=>(a.prix||0)-(b.prix||0));
+    else if (tri==="prix_desc") sorted.sort((a,b)=>(b.prix||0)-(a.prix||0));
+    else if (tri==="az") sorted.sort((a,b)=>(a.nom||"").localeCompare(b.nom||""));
+    else sorted.reverse(); // recent : robes renvoyées par created_at croissant, donc on inverse
+    return sorted;
+  }, [robes, q, tri]);
 
   const handlePhoto = e => {
     const file = e.target.files[0];
@@ -867,7 +878,12 @@ function Catalogue({ robes, setRobes, toast }) {
           <Search size={16} style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }} />
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une pièce..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }} />
         </div>
-        <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:12 }}>{filtered.length} pièce{filtered.length>1?"s":""}</div>
+        <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:8 }}>{filtered.length} pièce{filtered.length>1?"s":""}</div>
+        <div style={{ display:"flex", gap:6, marginBottom:12, overflowX:"auto" }}>
+          {[{k:"recent",l:"Récent"},{k:"prix_asc",l:"Prix ↑"},{k:"prix_desc",l:"Prix ↓"},{k:"az",l:"A → Z"}].map(o => (
+            <button key={o.k} onClick={()=>setTri(o.k)} style={{ flexShrink:0, padding:"7px 13px", borderRadius:100, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:800, background:tri===o.k?T.rose:T.roseL, color:tri===o.k?"#fff":T.rose }}>{o.l}</button>
+          ))}
+        </div>
       </div>
 
       <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
