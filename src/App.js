@@ -1286,13 +1286,10 @@ function Planning({ reservations, robes, clientes }) {
                   <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
                 </div>
                 {r.note && (
-                  <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"9px 12px", marginBottom:8, fontSize:12, color:T.rose, fontWeight:700, fontStyle:"italic" }}>
+                  <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"9px 12px", fontSize:12, color:T.rose, fontWeight:700, fontStyle:"italic" }}>
                     ⚠️ {r.note}
                   </div>
                 )}
-                <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:8, padding:"9px 12px", fontSize:11, color:"#8B3020", fontWeight:600 }}>
-                  🚫 {robe?.nom} grisée du {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} au {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} — double réservation impossible
-                </div>
               </div>
             );
           })
