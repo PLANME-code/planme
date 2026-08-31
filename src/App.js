@@ -3117,6 +3117,9 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
 function AccountPanel({ user, onClose, onSignOut }) {
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportType, setSupportType] = useState("technique");
+  const [supportText, setSupportText] = useState("");
 
   const sendPasswordReset = async () => {
     setBusy("password"); setMessage("");
@@ -3150,6 +3153,28 @@ function AccountPanel({ user, onClose, onSignOut }) {
     }
   };
 
+  const contactSupport = () => {
+    const texte = supportText.trim();
+    if (!texte) {
+      setMessage("Écris quelques mots pour nous expliquer ta demande.");
+      return;
+    }
+
+    const sujet = supportType === "technique"
+      ? "PLAN ME — Problème technique"
+      : "PLAN ME — Suggestion d'amélioration";
+
+    const corps = [
+      `Compte : ${user?.email || ""}`,
+      "",
+      supportType === "technique" ? "Problème rencontré :" : "Amélioration souhaitée :",
+      texte
+    ].join("\n");
+
+    window.location.href =
+      `mailto:nafissa.tizaoui@hotmail.com?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+  };
+
   return (
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{ position:"fixed", inset:0, background:"rgba(33,31,26,.28)", backdropFilter:"blur(4px)", zIndex:700, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
       <div className="modal-enter" style={{ width:"100%", maxWidth:520, background:T.blanc, borderRadius:"24px 24px 0 0", padding:"16px 18px calc(24px + env(safe-area-inset-bottom))", boxShadow:"0 -18px 50px rgba(0,0,0,.16)" }}>
@@ -3181,6 +3206,118 @@ function AccountPanel({ user, onClose, onSignOut }) {
           <KeyRound size={19} color={T.vert}/>
           <span style={{ flex:1, textAlign:"left", fontWeight:800, color:T.encre }}>{busy==="password"?"Envoi...":"Modifier mon mot de passe"}</span>
         </button>
+
+        <button
+          className="mobile-action"
+          onClick={()=>{ setSupportOpen(v=>!v); setMessage(""); }}
+          style={{
+            width:"100%",
+            minHeight:50,
+            borderRadius:13,
+            border:`1px solid ${T.vertM}`,
+            background:T.blanc,
+            display:"flex",
+            alignItems:"center",
+            gap:12,
+            padding:"0 14px",
+            cursor:"pointer",
+            fontFamily:"inherit",
+            marginBottom:supportOpen?10:9
+          }}
+        >
+          <AlertCircle size={19} color={T.rose}/>
+          <span style={{ flex:1, textAlign:"left", fontWeight:800, color:T.encre }}>
+            Problème technique ou amélioration
+          </span>
+          <ChevronRight
+            size={16}
+            color={T.gris}
+            style={{ transform:supportOpen?"rotate(90deg)":"none", transition:"transform .15s ease" }}
+          />
+        </button>
+
+        {supportOpen && (
+          <div style={{
+            border:`1px solid ${T.vertM}`,
+            background:T.fond,
+            borderRadius:14,
+            padding:12,
+            marginBottom:10
+          }}>
+            <div style={{fontSize:11,fontWeight:900,color:T.encre,marginBottom:8}}>
+              Comment pouvons-nous t’aider ?
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:9}}>
+              {[
+                ["technique","Problème technique"],
+                ["amelioration","Amélioration"]
+              ].map(([id,label])=>{
+                const active=supportType===id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={()=>setSupportType(id)}
+                    style={{
+                      minHeight:38,
+                      borderRadius:9,
+                      border:`1px solid ${active?T.rose:T.vertM}`,
+                      background:active?T.rose:T.blanc,
+                      color:active?"#fff":T.encre,
+                      fontFamily:"inherit",
+                      fontSize:11,
+                      fontWeight:850,
+                      cursor:"pointer"
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <textarea
+              value={supportText}
+              onChange={e=>setSupportText(e.target.value)}
+              placeholder={supportType==="technique"
+                ? "Décris le problème rencontré..."
+                : "Décris l'amélioration que tu aimerais..."}
+              rows={4}
+              style={{
+                ...inputStyle,
+                resize:"vertical",
+                minHeight:90,
+                lineHeight:1.4
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={contactSupport}
+              disabled={!supportText.trim()}
+              style={{
+                width:"100%",
+                minHeight:42,
+                marginTop:8,
+                border:"none",
+                borderRadius:10,
+                background:supportText.trim()?T.vert:T.vertM,
+                color:"#fff",
+                fontFamily:"inherit",
+                fontWeight:900,
+                fontSize:12,
+                cursor:supportText.trim()?"pointer":"default"
+              }}
+            >
+              Nous contacter
+            </button>
+
+            <div style={{fontSize:10.5,color:T.gris,marginTop:7,textAlign:"center"}}>
+              Ton adresse de compte sera ajoutée automatiquement au message.
+            </div>
+          </div>
+        )}
 
         {message && <div style={{ padding:"10px 12px", borderRadius:10, background:T.fond, fontSize:11.5, fontWeight:700, color:T.encre, margin:"4px 0 10px" }}>{message}</div>}
 
