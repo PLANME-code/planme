@@ -281,10 +281,25 @@ const injectStyles = () => {
     }
 
     @media print {
-      html, body {
+      html, body, #root {
+        width:100% !important;
+        max-width:none !important;
+        margin:0 !important;
+        padding:0 !important;
         background:#fff !important;
         -webkit-print-color-adjust:exact !important;
         print-color-adjust:exact !important;
+      }
+
+      /* IMPORTANT : enlève la largeur "application" (760px) pendant l'impression.
+         Sinon le planning reste coincé dans une petite colonne au milieu de la feuille. */
+      .app-shell,
+      .main-content {
+        width:100% !important;
+        max-width:none !important;
+        margin:0 !important;
+        padding:0 !important;
+        overflow:visible !important;
       }
 
       body * { visibility:hidden !important; }
@@ -295,13 +310,19 @@ const injectStyles = () => {
 
       .print-only {
         display:block !important;
-        position:absolute;
-        inset:0;
-        width:100%;
-        padding:0;
+        position:fixed !important;
+        left:0 !important;
+        top:0 !important;
+        right:0 !important;
+        width:auto !important;
+        max-width:none !important;
+        min-width:0 !important;
+        margin:0 !important;
+        padding:0 !important;
         background:#fff;
         color:#211F1A;
         font-family:Georgia, "Times New Roman", serif;
+        transform:none !important;
       }
 
       .print-planning-header {
@@ -315,7 +336,7 @@ const injectStyles = () => {
       }
 
       .print-brand {
-        font-size:31px;
+        font-size:34px;
         line-height:1;
         font-weight:900;
         letter-spacing:-1px;
@@ -370,7 +391,7 @@ const injectStyles = () => {
         padding:8px 7px;
         border-bottom:2px solid #2B2925;
         text-align:left;
-        font-size:8.5px;
+        font-size:9px;
         font-weight:900;
         text-transform:uppercase;
         letter-spacing:.09em;
@@ -381,7 +402,7 @@ const injectStyles = () => {
         padding:8px 7px;
         border-bottom:1px solid #E6E0DA;
         text-align:left;
-        font-size:9.5px;
+        font-size:10px;
         vertical-align:middle;
         line-height:1.3;
       }
