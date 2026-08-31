@@ -248,6 +248,8 @@ const injectStyles = () => {
     .modal-overlay { align-items:flex-end; padding:8px 8px 0; }
     .modal-sheet { width:100%; max-width:620px; max-height:calc(100dvh - 16px); border-radius:24px 24px 0 0; }
     .print-only { display:none; }
+    .modal-sheet input, .modal-sheet button, .modal-sheet select, .modal-sheet textarea { max-width:100%; }
+    .modal-sheet { scrollbar-gutter:stable; }
 
     @media (max-width:600px) {
       input, select, textarea { font-size:16px !important; }
@@ -800,6 +802,27 @@ function Avatar({ color, nom, size = 42 }) {
 }
 
 function Modal({ open, onClose, title, children }) {
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousPosition = document.body.style.position;
+    const previousWidth = document.body.style.width;
+    const scrollY = window.scrollY;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.top = `-${scrollY}px`;
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousPosition;
+      document.body.style.width = previousWidth;
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
   if (!open) return null;
 
   return createPortal(
@@ -823,7 +846,9 @@ function Modal({ open, onClose, title, children }) {
           overflowY:"auto",
           overflowX:"hidden",
           boxShadow:"0 -8px 40px rgba(0,0,0,.22)",
-          WebkitOverflowScrolling:"touch"
+          WebkitOverflowScrolling:"touch",
+          overscrollBehavior:"contain",
+          touchAction:"pan-y"
         }}
       >
         <div style={{ padding:"0 18px" }}>
@@ -1171,6 +1196,76 @@ function CalGrid({ cells, selected, onSelect, eventsByDay={} }) {
   );
 }
 
+
+function formatShortDate(ds) {
+  if (!ds) return "Choisir";
+  return new Date(`${ds}T12:00:00`).toLocaleDateString("fr-FR", { day:"numeric", month:"short", year:"numeric" });
+}
+
+function DateRangeCalendar({ start, end, onChange, onComplete }) {
+  const initial = start ? new Date(`${start}T12:00:00`) : new Date();
+  const [month, setMonth] = useState(new Date(initial.getFullYear(), initial.getMonth(), 1));
+  const cells = buildCal(month);
+  const jours = ["L","M","M","J","V","S","D"];
+
+  const choose = (ds) => {
+    if (!start || end) {
+      onChange(ds, "");
+      return;
+    }
+    if (ds < start) {
+      onChange(ds, "");
+      return;
+    }
+    onChange(start, ds);
+    if (onComplete) setTimeout(() => onComplete(start, ds), 80);
+  };
+
+  return (
+    <div style={{ background:T.blanc, border:`1px solid ${T.vertM}`, borderRadius:16, padding:12, boxShadow:"0 8px 24px rgba(31,58,46,.07)" }}>
+      <CalHeader mois={month} setMois={setMonth}/>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, marginBottom:4 }}>
+        {jours.map((j,i)=><div key={i} style={{ textAlign:"center", fontSize:9, fontWeight:900, color:T.gris }}>{j}</div>)}
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
+        {cells.map((cell,i) => {
+          if (!cell) return <div key={i}/>;
+          const isStart = cell.ds===start;
+          const isEnd = cell.ds===end;
+          const inRange = !!start && !!end && cell.ds>start && cell.ds<end;
+          const isSelected = isStart || isEnd;
+          return (
+            <button
+              key={cell.ds}
+              type="button"
+              onClick={()=>choose(cell.ds)}
+              style={{
+                minHeight:42,
+                border:"none",
+                borderRadius:isSelected?11:inRange?4:10,
+                background:isSelected?T.rose:inRange?T.roseL:"transparent",
+                color:isSelected?"#fff":T.encre,
+                fontFamily:"inherit",
+                fontWeight:isSelected?900:700,
+                fontSize:12,
+                cursor:"pointer"
+              }}
+            >
+              {cell.d}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginTop:10, padding:"9px 10px", background:T.fond, borderRadius:11, fontSize:11.5, fontWeight:800, color:T.encre }}>
+        <span>{formatShortDate(start)}</span>
+        <ChevronRight size={14} color={T.rose}/>
+        <span>{end ? formatShortDate(end) : "Date de fin"}</span>
+      </div>
+    </div>
+  );
+}
+
+
 function Essayages({ essayages, setEssayages, robes, clientes, setClientes, reservations, toast }) {
   const [mois, setMois] = useState(new Date());
   const [sel, setSel] = useState(TODAY);
@@ -1348,17 +1443,30 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
 function Planning({ reservations, robes, clientes }) {
   const [mois, setMois] = useState(new Date());
   const [sel, setSel] = useState(TODAY);
+  const [printModal, setPrintModal] = useState(false);
+  const firstOfMonth = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}-01`;
+  const lastOfMonth = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}-${String(new Date(mois.getFullYear(),mois.getMonth()+1,0).getDate()).padStart(2,"0")}`;
+  const [printFrom, setPrintFrom] = useState(firstOfMonth);
+  const [printTo, setPrintTo] = useState(lastOfMonth);
 
   const cells = buildCal(mois, reservations.map(r => ({ debut:r.debut, fin:r.fin })));
   const dayRes = reservations.filter(r => r.debut<=sel && r.fin>=sel);
 
-  const printPlanning = () => {
-    window.print();
+  const openPrintSelector = () => {
+    const from = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}-01`;
+    const to = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}-${String(new Date(mois.getFullYear(),mois.getMonth()+1,0).getDate()).padStart(2,"0")}`;
+    setPrintFrom(from);
+    setPrintTo(to);
+    setPrintModal(true);
   };
 
-  const monthKey = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}`;
-  const monthReservations = reservations
-    .filter(r => r.debut?.startsWith(monthKey))
+  const printPlanning = () => {
+    if (!printFrom || !printTo) return;
+    setTimeout(() => window.print(), 80);
+  };
+
+  const printReservations = reservations
+    .filter(r => r.debut && (r.fin||r.debut) >= printFrom && r.debut <= printTo)
     .sort((a,b) => String(a.debut).localeCompare(String(b.debut)));
 
   return (
@@ -1381,7 +1489,7 @@ function Planning({ reservations, robes, clientes }) {
       },[reservations,clientes,robes])}/>
       </div>
       <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10 }}>
-        <button className="icon-btn" onClick={printPlanning} title="Imprimer" aria-label="Imprimer"
+        <button className="icon-btn" onClick={openPrintSelector} title="Imprimer" aria-label="Imprimer"
           style={{ width:44, height:44, borderRadius:12, background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 2px 8px rgba(31,58,46,.07)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <Printer size={19} color={T.encre}/>
         </button>
@@ -1395,16 +1503,24 @@ function Planning({ reservations, robes, clientes }) {
             const robe = robes.find(x=>x.id===r.rid);
             const cl = clientes.find(x=>x.id===r.cid);
             return (
-              <div key={r.id} style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:"12px 14px", marginBottom:10, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:10 }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
-                    <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{robe?.nom}</div>
+              <div key={r.id} style={{ background:T.blanc, borderRadius:12, border:`1px solid ${T.vertM}`, padding:"11px 12px", marginBottom:9, boxShadow:"0 2px 10px rgba(31,58,46,.06)" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+                  {robe?.photo_url
+                    ? <img src={robe.photo_url} alt={robe.nom} style={{ width:48, height:48, borderRadius:10, objectFit:"cover", flexShrink:0 }}/>
+                    : <Avatar color={robe?.shade} nom={robe?.nom} size={48}/>
+                  }
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:900, fontSize:14.5, color:T.encre, lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {robe?.nom || "Pièce"}
+                    </div>
+                    <div style={{ fontSize:12, color:T.gris, marginTop:3, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {cl?.nom || "Cliente"}
+                    </div>
                   </div>
-                  <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
+                  <span style={{ background:T.roseL, color:T.rose, fontSize:9.5, fontWeight:800, padding:"3px 8px", borderRadius:100, flexShrink:0 }}>Confirmée</span>
                 </div>
                 {cleanReservationNote(r.note) && (
-                  <div style={{ background:"#FFF1F2", border:"1.5px solid #FDA4AF", borderRadius:12, padding:"12px 14px", fontSize:15, color:"#E11D48", fontWeight:900, lineHeight:1.4 }}>
+                  <div style={{ marginTop:8, background:"#FFF1F2", border:"1px solid #FDA4AF", borderRadius:9, padding:"7px 9px", fontSize:12.5, color:"#E11D48", fontWeight:900, lineHeight:1.3 }}>
                     {cleanReservationNote(r.note)}
                   </div>
                 )}
@@ -1413,10 +1529,52 @@ function Planning({ reservations, robes, clientes }) {
           })
       }
 
+      <Modal open={printModal} onClose={()=>setPrintModal(false)} title="Imprimer le planning">
+        <div style={{ fontSize:12, color:T.gris, lineHeight:1.5, marginBottom:12 }}>
+          Sélectionne la période que tu souhaites imprimer.
+        </div>
+
+        <DateRangeCalendar
+          start={printFrom}
+          end={printTo}
+          onChange={(debut,fin)=>{ setPrintFrom(debut); setPrintTo(fin); }}
+        />
+
+        <div style={{ marginTop:14, background:T.fond, borderRadius:12, padding:"11px 13px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+          <span style={{ fontSize:11.5, color:T.gris, fontWeight:700 }}>Réservations dans la période</span>
+          <strong style={{ fontSize:15, color:T.encre }}>{printFrom && printTo ? printReservations.length : "—"}</strong>
+        </div>
+
+        <button
+          type="button"
+          onClick={printPlanning}
+          disabled={!printFrom || !printTo}
+          style={{
+            width:"100%",
+            minHeight:50,
+            marginTop:12,
+            border:"none",
+            borderRadius:13,
+            background:(!printFrom||!printTo)?T.gris:T.rose,
+            color:"#fff",
+            fontWeight:900,
+            fontSize:14,
+            fontFamily:"inherit",
+            cursor:(!printFrom||!printTo)?"not-allowed":"pointer",
+            display:"flex",
+            alignItems:"center",
+            justifyContent:"center",
+            gap:8
+          }}
+        >
+          <Printer size={18}/> Imprimer cette période
+        </button>
+      </Modal>
+
       <div className="print-only">
         <h1 style={{ margin:"0 0 4px", fontSize:22 }}>Plan Me</h1>
         <div style={{ marginBottom:18, textTransform:"capitalize" }}>
-          Planning — {mois.toLocaleDateString("fr-FR",{month:"long",year:"numeric"})}
+          Planning — {formatShortDate(printFrom)} → {formatShortDate(printTo)}
         </div>
         <table>
           <thead>
@@ -1429,9 +1587,9 @@ function Planning({ reservations, robes, clientes }) {
             </tr>
           </thead>
           <tbody>
-            {monthReservations.length === 0 ? (
+            {printReservations.length === 0 ? (
               <tr><td colSpan="5">Aucune réservation ce mois.</td></tr>
-            ) : monthReservations.map(r => {
+            ) : printReservations.map(r => {
               const robe = robes.find(x=>x.id===r.rid);
               const cl = clientes.find(x=>x.id===r.cid);
               return (
@@ -1463,6 +1621,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
   const [showSuggest, setShowSuggest] = useState(false);
   const [formError, setFormError] = useState("");
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const suggestions = form.nom.trim().length>0
     ? clientes.filter(c => c.nom.toLowerCase().includes(form.nom.trim().toLowerCase())).slice(0,6)
@@ -1680,7 +1839,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       </Modal>
 
       {/* Modal nouvelle réservation */}
-      <Modal open={modal} onClose={() => { setModal(false); setFormError(""); }} title="Nouvelle réservation">
+      <Modal open={modal} onClose={() => { setModal(false); setFormError(""); setDatePickerOpen(false); }} title="Nouvelle réservation">
         {formError && (
           <div style={{ background:"#FDECEC", border:"1.5px solid #E24C4C", borderRadius:9, padding:"11px 14px", marginBottom:14, fontSize:12.5, color:"#B01E1E", fontWeight:700, display:"flex", gap:8, alignItems:"flex-start" }}>
             <span style={{ fontSize:15, lineHeight:1 }}>⚠️</span>
@@ -1734,10 +1893,50 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
             ))}
           </div>
         </Field>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <Field label="Date début"><input style={inputStyle} type="date" value={form.debut} onChange={e=>{setForm(p=>({...p,debut:e.target.value})); setFormError("");}}/></Field>
-          <Field label="Date fin"><input style={inputStyle} type="date" value={form.fin} onChange={e=>{setForm(p=>({...p,fin:e.target.value})); setFormError("");}}/></Field>
-        </div>
+        <Field label="Période de location">
+          <button
+            type="button"
+            onClick={()=>setDatePickerOpen(v=>!v)}
+            style={{
+              width:"100%",
+              minHeight:64,
+              display:"grid",
+              gridTemplateColumns:"1fr auto 1fr",
+              alignItems:"center",
+              gap:10,
+              background:T.fond,
+              border:`1.5px solid ${datePickerOpen?T.rose:T.vertM}`,
+              borderRadius:14,
+              padding:"10px 14px",
+              cursor:"pointer",
+              fontFamily:"inherit",
+              boxSizing:"border-box"
+            }}
+          >
+            <div style={{ textAlign:"left", minWidth:0 }}>
+              <div style={{ fontSize:9, fontWeight:900, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:4 }}>Début</div>
+              <div style={{ fontSize:13.5, fontWeight:900, color:form.debut?T.encre:T.gris, whiteSpace:"nowrap" }}>{formatShortDate(form.debut)}</div>
+            </div>
+            <div style={{ width:32, height:32, borderRadius:100, background:T.roseL, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <ChevronRight size={16} color={T.rose}/>
+            </div>
+            <div style={{ textAlign:"right", minWidth:0 }}>
+              <div style={{ fontSize:9, fontWeight:900, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:4 }}>Fin</div>
+              <div style={{ fontSize:13.5, fontWeight:900, color:form.fin?T.encre:T.gris, whiteSpace:"nowrap" }}>{form.fin ? formatShortDate(form.fin) : "Choisir"}</div>
+            </div>
+          </button>
+
+          {datePickerOpen && (
+            <div style={{ marginTop:9 }}>
+              <DateRangeCalendar
+                start={form.debut}
+                end={form.fin}
+                onChange={(debut,fin)=>{ setForm(p=>({...p,debut,fin})); setFormError(""); }}
+                onComplete={()=>setDatePickerOpen(false)}
+              />
+            </div>
+          )}
+        </Field>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           <Field label="Prix (€)"><input style={inputStyle} type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder={rSelected?.prix?.toString()||""}/></Field>
           <Field label="Caution (€)"><input style={inputStyle} type="number" value={form.caution} onChange={e=>setForm(p=>({...p,caution:e.target.value}))} placeholder={rSelected?.caution?.toString()||""}/></Field>
@@ -1782,29 +1981,33 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 // ── STATS ─────────────────────────────────────────────────────
 function Stats({ reservations, robes }) {
   const [moisDetail, setMoisDetail] = useState(null);
+
+  // r.prix contient le prix réellement appliqué à la réservation.
+  // Quand un prix est modifié dans le formulaire, c'est ce montant qui est enregistré.
+  const prixReel = (r) => Number(r?.prix) || 0;
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
 
-  const caTotal = reservations.reduce((s,r)=>s+(+r.prix||0),0);
+  const caTotal = reservations.reduce((s,r)=>s+prixReel(r),0);
   const resThisMonth = reservations.filter(r=>r.debut?.startsWith(currentMonth));
-  const caMois = resThisMonth.reduce((s,r)=>s+(+r.prix||0),0);
+  const caMois = resThisMonth.reduce((s,r)=>s+prixReel(r),0);
   const pm = reservations.length ? Math.round(caTotal/reservations.length) : 0;
   const cautions = reservations.filter(r=>r.statut!=="terminee").reduce((s,r)=>s+(+r.caution||0),0);
   const resteAEncaisser = reservations
     .filter(r=>r.statut!=="terminee")
-    .reduce((s,r)=>s+Math.max((+r.prix||0)-(+r.acompte||0),0),0);
+    .reduce((s,r)=>s+Math.max(prixReel(r)-(+r.acompte||0),0),0);
   const aVenir = reservations.filter(r => (r.fin||r.debut) >= TODAY && r.statut!=="terminee").length;
 
   const parMois = useMemo(() => {
     const m={};
-    reservations.forEach(r=>{ const k=r.debut?.slice(0,7); if(k) m[k]=(m[k]||0)+(+r.prix||0); });
+    reservations.forEach(r=>{ const k=r.debut?.slice(0,7); if(k) m[k]=(m[k]||0)+prixReel(r); });
     return Object.entries(m).sort().slice(-6);
   },[reservations]);
   const maxCA = Math.max(...parMois.map(([,v])=>v),1);
 
   const parRobe = useMemo(() => {
     const m={};
-    reservations.forEach(r=>{ m[r.rid]=(m[r.rid]||0)+(+r.prix||0); });
+    reservations.forEach(r=>{ m[r.rid]=(m[r.rid]||0)+prixReel(r); });
     return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);
   },[reservations]);
 
@@ -1873,7 +2076,7 @@ function Stats({ reservations, robes }) {
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
             <div>
               <div style={{ fontWeight:900, fontSize:14, color:T.encre }}>{labelMois(moisDetail)}</div>
-              <div style={{ fontSize:11, color:T.gris }}>{resDetail.length} réservation{resDetail.length>1?"s":""} · {resDetail.reduce((s,r)=>s+(+r.prix||0),0).toLocaleString("fr-FR")}€</div>
+              <div style={{ fontSize:11, color:T.gris }}>{resDetail.length} réservation{resDetail.length>1?"s":""} · {resDetail.reduce((s,r)=>s+prixReel(r),0).toLocaleString("fr-FR")}€</div>
             </div>
             <button className="icon-btn" onClick={()=>setMoisDetail(null)} style={{ background:T.fond, border:"none", borderRadius:9, width:36, height:36, cursor:"pointer" }}><X size={14} color={T.gris}/></button>
           </div>
@@ -1889,7 +2092,7 @@ function Stats({ reservations, robes }) {
                   <div style={{ fontSize:12, fontWeight:800, color:T.encre, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{robe?.nom}</div>
                   <div style={{ fontSize:11, color:T.gris }}>{new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</div>
                 </div>
-                <span style={{ fontSize:13, fontWeight:900, color:T.vert }}>{r.prix}€</span>
+                <span style={{ fontSize:13, fontWeight:900, color:T.vert }}>{prixReel(r)}€</span>
               </div>
             );
           })}
