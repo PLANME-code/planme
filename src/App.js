@@ -240,7 +240,8 @@ const injectStyles = () => {
     button, input, select, textarea { -webkit-tap-highlight-color:transparent; }
     button { touch-action:manipulation; }
     .app-shell { width:100%; max-width:430px; margin:0 auto; overflow-x:hidden; }
-    .bottom-nav { width:100%; max-width:430px; }
+    .bottom-nav { width:100%; max-width:430px; pointer-events:auto; touch-action:manipulation; user-select:none; }
+    .bottom-nav button { touch-action:manipulation; -webkit-user-select:none; user-select:none; }
     .main-content { width:100%; box-sizing:border-box; overflow-x:hidden; }
     .mobile-action { min-height:46px; }
     .icon-btn { min-width:44px; min-height:44px; }
@@ -1504,26 +1505,30 @@ function Planning({ reservations, robes, clientes }) {
             const cl = clientes.find(x=>x.id===r.cid);
             return (
               <div key={r.id} style={{ background:T.blanc, borderRadius:12, border:`1px solid ${T.vertM}`, padding:"11px 12px", marginBottom:9, boxShadow:"0 2px 10px rgba(31,58,46,.06)" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+                <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
                   {robe?.photo_url
-                    ? <img src={robe.photo_url} alt={robe.nom} style={{ width:48, height:48, borderRadius:10, objectFit:"cover", flexShrink:0 }}/>
-                    : <Avatar color={robe?.shade} nom={robe?.nom} size={48}/>
+                    ? <img src={robe.photo_url} alt={robe.nom} style={{ width:66, height:66, borderRadius:12, objectFit:"cover", flexShrink:0 }}/>
+                    : <Avatar color={robe?.shade} nom={robe?.nom} size={66}/>
                   }
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:900, fontSize:14.5, color:T.encre, lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                      {robe?.nom || "Pièce"}
+                    <div style={{ display:"flex", alignItems:"flex-start", gap:8 }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:900, fontSize:15, color:T.encre, lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {robe?.nom || "Pièce"}
+                        </div>
+                        <div style={{ fontSize:12, color:T.gris, marginTop:3, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {cl?.nom || "Cliente"}
+                        </div>
+                      </div>
+                      <span style={{ background:T.roseL, color:T.rose, fontSize:9.5, fontWeight:800, padding:"3px 8px", borderRadius:100, flexShrink:0 }}>Confirmée</span>
                     </div>
-                    <div style={{ fontSize:12, color:T.gris, marginTop:3, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                      {cl?.nom || "Cliente"}
-                    </div>
+                    {cleanReservationNote(r.note) && (
+                      <div style={{ marginTop:6, background:"#FFF1F2", border:"1px solid #FDA4AF", borderRadius:8, padding:"6px 8px", fontSize:12.5, color:"#E11D48", fontWeight:900, lineHeight:1.25 }}>
+                        {cleanReservationNote(r.note)}
+                      </div>
+                    )}
                   </div>
-                  <span style={{ background:T.roseL, color:T.rose, fontSize:9.5, fontWeight:800, padding:"3px 8px", borderRadius:100, flexShrink:0 }}>Confirmée</span>
                 </div>
-                {cleanReservationNote(r.note) && (
-                  <div style={{ marginTop:8, background:"#FFF1F2", border:"1px solid #FDA4AF", borderRadius:9, padding:"7px 9px", fontSize:12.5, color:"#E11D48", fontWeight:900, lineHeight:1.3 }}>
-                    {cleanReservationNote(r.note)}
-                  </div>
-                )}
               </div>
             );
           })
@@ -2795,6 +2800,13 @@ export default function App() {
     }, 600);
   };
 
+  const openTab = (id) => {
+    if (tab === id) return;
+    setTab(id);
+    window.scrollTo({ top:0, behavior:"auto" });
+  };
+
+
   return (
     <div className="app-shell" style={{ fontFamily:"'Manrope',sans-serif", background:T.blanc, minHeight:"100vh", position:"relative", paddingBottom:80, boxShadow:"0 0 32px rgba(31,58,46,.06)", borderLeft:`1px solid ${T.vertM}`, borderRight:`1px solid ${T.vertM}` }}>
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -2862,7 +2874,7 @@ export default function App() {
       {/* Tab bar */}
       <div className="bottom-nav" style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", background:"rgba(255,255,255,.96)", backdropFilter:"blur(14px)", borderTop:`1px solid ${T.vertM}`, display:"flex", zIndex:200, boxShadow:"0 -8px 24px rgba(31,58,46,.05)" }}>
         {TABS.map(({ id, label, Icon }) => (
-          <button key={id} onClick={() => setTab(id)} style={{ flex:1, minWidth:0, minHeight:62, padding:"10px 3px 12px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, background:"none", border:"none", cursor:"pointer", color:tab===id?T.rose:T.gris, fontFamily:"inherit", position:"relative", transition:"color .2s, transform .15s" }}>
+          <button key={id} onPointerUp={(e)=>{ e.preventDefault(); openTab(id); }} onClick={(e)=>{ if(e.detail===0) openTab(id); }} style={{ flex:1, minWidth:0, minHeight:64, padding:"10px 3px 12px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, background:"none", border:"none", cursor:"pointer", color:tab===id?T.rose:T.gris, fontFamily:"inherit", position:"relative" }}>
             {tab===id && <div style={{ position:"absolute", top:0, left:"28%", right:"28%", height:3, borderRadius:"0 0 3px 3px", background:T.rose, animation:"popCheck .3s cubic-bezier(.34,1.56,.64,1) both" }}/>}
             <Icon size={18} strokeWidth={tab===id?2.4:1.8} style={{ transition:"transform .2s cubic-bezier(.34,1.56,.64,1)", transform:tab===id?"scale(1.12)":"scale(1)" }}/>
             <span style={{ fontSize:9.5, fontWeight:tab===id?800:600, letterSpacing:".02em" }}>{label}</span>
