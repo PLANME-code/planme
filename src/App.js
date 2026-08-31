@@ -2554,6 +2554,19 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 </span>
               </div>
 
+              <div style={{
+                marginTop:8,
+                background:T.roseL,
+                borderRadius:8,
+                padding:"10px 14px",
+                display:"flex",
+                justifyContent:"space-between",
+                alignItems:"center"
+              }}>
+                <span style={{ fontSize:12, fontWeight:800, color:T.gris }}>Caution</span>
+                <span style={{ fontSize:16, fontWeight:900, color:T.encre }}>{detail.r.caution || 0}€</span>
+              </div>
+
               {detail.reste>0 && (
                 <button
                   type="button"
@@ -2595,13 +2608,6 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               </div>}
             </div>
             {/* Caution séparée */}
-            <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:10, padding:"11px 14px", marginBottom:10 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".1em", textTransform:"uppercase" }}>Caution</div>
-                <span style={{ fontWeight:900, fontSize:16, color:T.encre }}>{detail.r.caution}€</span>
-              </div>
-              <div style={{ fontSize:11, color:T.gris, fontWeight:600 }}>Chèque caution — séparé du prix · à rendre à la fin</div>
-            </div>
             {cleanReservationNote(detail.r.note) && (
               <div style={{ background:"#FFF1F2", border:"1.5px solid #FDA4AF", borderRadius:12, padding:"12px 14px", marginBottom:10, fontSize:15, color:"#E11D48", fontWeight:900, lineHeight:1.4 }}>
                 {cleanReservationNote(detail.r.note)}
