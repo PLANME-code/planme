@@ -273,7 +273,8 @@ const injectStyles = () => {
       }
       .catalogue-photo {
         aspect-ratio:4 / 5 !important;
-        max-height:240px;
+        height:auto !important;
+        max-height:none !important;
       }
     }
     @media (min-width:1100px) {
@@ -281,7 +282,8 @@ const injectStyles = () => {
         grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
       }
       .catalogue-photo {
-        max-height:220px;
+        height:auto !important;
+        max-height:none !important;
       }
     }
 
@@ -2113,6 +2115,20 @@ function Stats({ reservations, robes }) {
   const caTotal = reservations.reduce((s,r)=>s+prixReel(r),0);
   const resThisMonth = reservations.filter(r=>r.debut?.startsWith(currentMonth));
   const caMois = resThisMonth.reduce((s,r)=>s+prixReel(r),0);
+  const nowHebdo = new Date();
+  const debutHebdo = new Date(nowHebdo);
+  const jourHebdo = (nowHebdo.getDay() + 6) % 7;
+  debutHebdo.setDate(nowHebdo.getDate() - jourHebdo);
+  debutHebdo.setHours(0,0,0,0);
+  const finHebdo = new Date(debutHebdo);
+  finHebdo.setDate(debutHebdo.getDate() + 7);
+
+  const caHebdo = reservations.reduce((sum, r) => {
+    const d = new Date(`${r.debut}T12:00:00`);
+    return d >= debutHebdo && d < finHebdo
+      ? sum + prixReel(r)
+      : sum;
+  }, 0);
   const pm = reservations.length ? Math.round(caTotal/reservations.length) : 0;
   const cautions = reservations.filter(r=>effectiveReservationStatus(r)!=="terminee").reduce((s,r)=>s+(+r.caution||0),0);
   const resteAEncaisser = reservations
