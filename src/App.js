@@ -1164,15 +1164,15 @@ function BtnPrimary({ onClick, disabled, children }) {
 }
 
 // ── CATALOGUE ────────────────────────────────────────────────
-function Catalogue({ robes, setRobes, reservations, toast }) {
+function Catalogue({ robes, setRobes, reservations, clientes, toast }) {
   const [q, setQ] = useState("");
   const [modal, setModal] = useState(false);
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState({ nom:"", categorie:"", tailleMin:"", tailleMax:"", prix:"", caution:"", photoFile:null, photoPreview:null });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [dispoFrom, setDispoFrom] = useState("");
-  const [dispoTo, setDispoTo] = useState("");
+  const [dispoYear, setDispoYear] = useState(new Date().getFullYear());
+  const [dispoMonth, setDispoMonth] = useState(new Date().getMonth());
 
   const filtered = useMemo(() => robes.filter(r => r.nom?.toLowerCase().includes(q.toLowerCase())), [robes, q]);
 
@@ -1309,7 +1309,7 @@ function Catalogue({ robes, setRobes, reservations, toast }) {
       </Modal>
 
       {/* Modal détail */}
-      <Modal open={!!detail} onClose={() => { setDetail(null); setDispoFrom(""); setDispoTo(""); }} title={detail?.nom || ""}>
+      <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.nom || ""}>
         {detail && (
           <>
             <div style={{ height:180, borderRadius:10, overflow:"hidden", background:`linear-gradient(135deg,${detail.shade||T.vert}22,${detail.shade||T.vert}55)`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
@@ -1327,75 +1327,135 @@ function Catalogue({ robes, setRobes, reservations, toast }) {
               ))}
             </div>
             {(() => {
-              const resaRobe = reservations
-                .filter(r => r.rid===detail.id && effectiveReservationStatus(r)!=="terminee")
-                .sort((a,b)=>String(a.debut).localeCompare(String(b.debut)));
+              const moisLabels = [
+                "Janvier","Février","Mars","Avril","Mai","Juin",
+                "Juillet","Août","Septembre","Octobre","Novembre","Décembre"
+              ];
+              const currentYear = new Date().getFullYear();
 
-              const from = dispoFrom;
-              const to = dispoTo || dispoFrom;
-              const conflit = from && to
-                ? resaRobe.find(r => r.debut <= to && (r.fin||r.debut) >= from)
-                : null;
+              const monthStart = new Date(dispoYear, dispoMonth, 1);
+              const monthEnd = new Date(dispoYear, dispoMonth + 1, 0);
+
+              const ymd = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth()+1).padStart(2,"0");
+                const day = String(d.getDate()).padStart(2,"0");
+                return `${y}-${m}-${day}`;
+              };
+
+              const from = ymd(monthStart);
+              const to = ymd(monthEnd);
+
+              const resaMois = reservations
+                .filter(r =>
+                  r.rid===detail.id &&
+                  r.debut &&
+                  r.debut <= to &&
+                  (r.fin||r.debut) >= from
+                )
+                .sort((a,b)=>String(a.debut).localeCompare(String(b.debut)));
 
               return (
                 <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
                   <div style={{ fontSize:10, fontWeight:900, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:9 }}>
-                    Vérifier la disponibilité
+                    Disponibilités par mois
                   </div>
 
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                    <div>
-                      <div style={{ fontSize:10, color:T.gris, fontWeight:700, marginBottom:4 }}>Du</div>
-                      <input
-                        type="date"
-                        value={dispoFrom}
-                        onChange={e=>{
-                          setDispoFrom(e.target.value);
-                          if(dispoTo && e.target.value>dispoTo) setDispoTo(e.target.value);
-                        }}
-                        style={{...inputStyle,padding:"9px 8px"}}
-                      />
-                    </div>
-                    <div>
-                      <div style={{ fontSize:10, color:T.gris, fontWeight:700, marginBottom:4 }}>Au</div>
-                      <input
-                        type="date"
-                        value={dispoTo}
-                        min={dispoFrom||undefined}
-                        onChange={e=>setDispoTo(e.target.value)}
-                        style={{...inputStyle,padding:"9px 8px"}}
-                      />
-                    </div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:9 }}>
+                    {[currentYear, currentYear + 1].map(year => {
+                      const active = dispoYear === year;
+                      return (
+                        <button
+                          key={year}
+                          type="button"
+                          onClick={()=>setDispoYear(year)}
+                          style={{
+                            minHeight:38,
+                            borderRadius:9,
+                            border:`1px solid ${active ? T.vert : T.vertM}`,
+                            background:active ? T.vert : T.blanc,
+                            color:active ? "#fff" : T.encre,
+                            fontFamily:"inherit",
+                            fontSize:12,
+                            fontWeight:900,
+                            cursor:"pointer"
+                          }}
+                        >
+                          {year}
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  {from && (
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:11 }}>
+                    {moisLabels.map((label, index)=>{
+                      const active = dispoMonth === index;
+                      return (
+                        <button
+                          key={label}
+                          type="button"
+                          onClick={()=>setDispoMonth(index)}
+                          style={{
+                            minHeight:34,
+                            borderRadius:8,
+                            border:`1px solid ${active ? T.rose : T.vertM}`,
+                            background:active ? T.rose : T.blanc,
+                            color:active ? "#fff" : T.encre,
+                            fontFamily:"inherit",
+                            fontSize:10.5,
+                            fontWeight:850,
+                            cursor:"pointer",
+                            padding:"5px 4px"
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ fontSize:11, fontWeight:900, color:T.encre, marginBottom:7 }}>
+                    Réservations — {moisLabels[dispoMonth]} {dispoYear}
+                  </div>
+
+                  {resaMois.length === 0 ? (
                     <div style={{
-                      marginTop:10,
+                      background:"#ECFDF5",
+                      color:T.vert,
                       borderRadius:8,
-                      padding:"9px 11px",
-                      display:"flex",
-                      gap:8,
-                      alignItems:"center",
-                      background:conflit?"#FFF1F2":"#ECFDF5",
-                      color:conflit?"#BE123C":T.vert,
+                      padding:"10px 11px",
                       fontSize:12,
                       fontWeight:900
                     }}>
-                      {conflit ? "✕" : "✓"}
-                      {conflit
-                        ? `Indisponible — déjà réservée du ${new Date(conflit.debut+"T12:00:00").toLocaleDateString("fr-FR")} au ${new Date((conflit.fin||conflit.debut)+"T12:00:00").toLocaleDateString("fr-FR")}`
-                        : "Disponible sur cette période"}
+                      ✓ Aucune réservation ce mois — robe disponible
                     </div>
-                  )}
-
-                  {resaRobe.length>0 && (
-                    <div style={{ marginTop:10 }}>
-                      <div style={{ fontSize:10, color:T.gris, fontWeight:800, marginBottom:5 }}>Prochaines réservations</div>
-                      {resaRobe.slice(0,3).map(r=>(
-                        <div key={r.id} style={{ fontSize:11, color:T.encre, padding:"3px 0", fontWeight:650 }}>
-                          {new Date(r.debut+"T12:00:00").toLocaleDateString("fr-FR")} → {new Date((r.fin||r.debut)+"T12:00:00").toLocaleDateString("fr-FR")}
-                        </div>
-                      ))}
+                  ) : (
+                    <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                      {resaMois.map(r=>{
+                        const cl = clientes.find?.(c=>c.id===r.cid);
+                        return (
+                          <div
+                            key={r.id}
+                            style={{
+                              background:T.blanc,
+                              border:`1px solid ${T.vertM}`,
+                              borderRadius:8,
+                              padding:"8px 10px"
+                            }}
+                          >
+                            <div style={{ fontSize:11.5, color:T.encre, fontWeight:900 }}>
+                              {new Date(r.debut+"T12:00:00").toLocaleDateString("fr-FR")}
+                              {" → "}
+                              {new Date((r.fin||r.debut)+"T12:00:00").toLocaleDateString("fr-FR")}
+                            </div>
+                            {cl?.nom && (
+                              <div style={{ fontSize:10.5, color:T.gris, marginTop:2, fontWeight:650 }}>
+                                {cl.nom}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -3707,7 +3767,7 @@ export default function App() {
       <div className="tab-content main-content" key={tab} style={{ paddingTop:16 }}>
           {tab==="catalogue" && <>
             {!seenTabs.catalogue && <OnboardingBubble tab="catalogue" onDismiss={()=>dismissOnboarding("catalogue")}/>}
-            <Catalogue robes={robes} setRobes={setRobes} reservations={reservations} toast={showToast}/>
+            <Catalogue robes={robes} setRobes={setRobes} reservations={reservations} clientes={clientes} toast={showToast}/>
           </>}
           {tab==="essayages" && <>
             {!seenTabs.essayages && <OnboardingBubble tab="essayages" onDismiss={()=>dismissOnboarding("essayages")}/>}
