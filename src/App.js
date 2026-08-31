@@ -310,11 +310,10 @@ const injectStyles = () => {
 
       .print-only {
         display:block !important;
-        position:fixed !important;
+        position:absolute !important;
         left:0 !important;
         top:0 !important;
-        right:0 !important;
-        width:auto !important;
+        width:100% !important;
         max-width:none !important;
         min-width:0 !important;
         margin:0 !important;
@@ -323,6 +322,7 @@ const injectStyles = () => {
         color:#211F1A;
         font-family:Georgia, "Times New Roman", serif;
         transform:none !important;
+        overflow:visible !important;
       }
 
       .print-planning-header {
@@ -375,7 +375,7 @@ const injectStyles = () => {
       .print-only table {
         width:100%;
         border-collapse:collapse;
-        table-layout:fixed;
+        table-layout:auto;
       }
 
       .print-only thead {
@@ -383,8 +383,19 @@ const injectStyles = () => {
       }
 
       .print-only tr {
-        break-inside:avoid;
-        page-break-inside:avoid;
+        break-inside:avoid !important;
+        page-break-inside:avoid !important;
+      }
+
+      .print-only td,
+      .print-only th {
+        overflow:visible !important;
+      }
+
+      .print-only td {
+        overflow-wrap:anywhere;
+        word-break:normal;
+        white-space:normal;
       }
 
       .print-only th {
@@ -442,10 +453,50 @@ const injectStyles = () => {
         color:#E11D48 !important;
         font-weight:700;
         font-style:italic;
+        white-space:normal !important;
+        overflow-wrap:anywhere !important;
+        word-break:break-word !important;
+        min-width:110px;
+        max-width:220px;
       }
 
       .print-status {
         white-space:nowrap;
+      }
+
+      .print-only.print-dense th {
+        font-size:8px;
+        padding:6px 5px;
+      }
+
+      .print-only.print-dense td {
+        font-size:9px;
+        padding:6px 5px;
+      }
+
+      .print-only.print-dense img {
+        width:46px !important;
+        height:52px !important;
+      }
+
+      .print-only.print-very-dense th {
+        font-size:7.5px;
+        padding:5px 4px;
+      }
+
+      .print-only.print-very-dense td {
+        font-size:8.2px;
+        padding:5px 4px;
+      }
+
+      .print-only.print-very-dense img {
+        width:40px !important;
+        height:46px !important;
+      }
+
+      .print-only.print-very-dense .print-note {
+        min-width:95px;
+        max-width:180px;
       }
     }
     @media (prefers-reduced-motion:reduce) {
@@ -1770,7 +1821,15 @@ function Planning({ reservations, robes, clientes }) {
         </button>
       </Modal>
 
-      <div className="print-only">
+      <div
+        className={`print-only ${
+          printReservations.length > 12
+            ? "print-very-dense"
+            : printReservations.length > 7
+              ? "print-dense"
+              : ""
+        }`}
+      >
         <div className="print-planning-header">
           <div>
             <div className="print-brand">
@@ -1789,17 +1848,17 @@ function Planning({ reservations, robes, clientes }) {
 
         <table>
           <colgroup>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"12%" }}/>
-            <col style={{ width:"19%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"9%" }}/>
+            <col style={{ width:"6%" }}/>
             <col style={{ width:"11%" }}/>
+            <col style={{ width:"18%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"6%" }}/>
+            <col style={{ width:"6%" }}/>
+            <col style={{ width:"6%" }}/>
+            <col style={{ width:"6%" }}/>
+            <col style={{ width:"8%" }}/>
+            <col style={{ width:"19%" }}/>
           </colgroup>
 
           <thead>
