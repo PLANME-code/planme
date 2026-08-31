@@ -3771,6 +3771,94 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   const isFounder = user?.email === "nafissa.tizaoui@hotmail.com";
 
+  // ── Sécurité : déconnexion automatique après 3h d'inactivité ──
+  // Fonctionne côté application, même avec l'offre gratuite Supabase.
+  useEffect(() => {
+    if (!user) return;
+
+    const ACTIVITY_KEY = "planme_last_activity";
+    const INACTIVITY_LIMIT = 3 * 60 * 60 * 1000; // 3 heures
+    let lastWrite = 0;
+    let loggingOut = false;
+
+    const logoutForInactivity = async () => {
+      if (loggingOut) return;
+      loggingOut = true;
+
+      try { localStorage.removeItem(ACTIVITY_KEY); } catch(e) {}
+
+      await auth.signOut();
+
+      setTodayOpen(false);
+      setAccountOpen(false);
+      setUser(null);
+      setRobes([]);
+      setClientes([]);
+      setReservations([]);
+      setEssayages([]);
+    };
+
+    const checkInactivity = () => {
+      let lastActivity = 0;
+      try {
+        lastActivity = Number(localStorage.getItem(ACTIVITY_KEY) || 0);
+      } catch(e) {}
+
+      if (lastActivity && Date.now() - lastActivity >= INACTIVITY_LIMIT) {
+        logoutForInactivity();
+        return true;
+      }
+      return false;
+    };
+
+    // IMPORTANT : on contrôle d'abord l'ancien timestamp.
+    // Ainsi, si l'app est restée fermée plus de 3h, la réouverture
+    // ne renouvelle pas artificiellement la session.
+    if (checkInactivity()) return;
+
+    const markActivity = () => {
+      const now = Date.now();
+
+      // Évite d'écrire dans localStorage à chaque mouvement de souris.
+      if (now - lastWrite < 60 * 1000) return;
+      lastWrite = now;
+
+      try { localStorage.setItem(ACTIVITY_KEY, String(now)); } catch(e) {}
+    };
+
+    // Première activité de la session si aucun timestamp n'existe encore.
+    try {
+      if (!localStorage.getItem(ACTIVITY_KEY)) {
+        localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+        lastWrite = Date.now();
+      }
+    } catch(e) {}
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // À la reprise de l'app, on vérifie d'abord les 3h.
+        if (!checkInactivity()) markActivity();
+      }
+    };
+
+    const activityEvents = ["pointerdown", "keydown", "mousemove", "touchstart", "scroll"];
+    activityEvents.forEach(evt =>
+      window.addEventListener(evt, markActivity, { passive:true })
+    );
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    // Vérification régulière même si l'application reste ouverte.
+    const timer = setInterval(checkInactivity, 60 * 1000);
+
+    return () => {
+      activityEvents.forEach(evt =>
+        window.removeEventListener(evt, markActivity)
+      );
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      clearInterval(timer);
+    };
+  }, [user]);
+
   if (payerEmail) return <PayerRedirectScreen email={payerEmail} />;
   if (recoveryToken) return <ResetPasswordScreen token={recoveryToken} onDone={() => setRecoveryToken(null)} />;
   if (!authChecked) return null;
@@ -3781,6 +3869,7 @@ export default function App() {
     setSigningOut(true);
     setTimeout(async () => {
       await auth.signOut();
+      try { localStorage.removeItem("planme_last_activity"); } catch(e) {}
       setUser(null);
       setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
       setSigningOut(false);
