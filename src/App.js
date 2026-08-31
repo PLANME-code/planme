@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, ChevronLeft, ChevronRight, Clock, TrendingUp, AlertCircle, Settings, LogOut, Edit3, Trash2, Home, Printer, UserRound, CreditCard, KeyRound, ExternalLink } from "lucide-react";
 
 const SUPABASE_URL = "https://drgiyafkcmfydkabctxa.supabase.co";
@@ -233,27 +234,48 @@ const injectStyles = () => {
     @keyframes heartBurst { 0% { transform:scale(0.5); opacity:0; } 30% { transform:scale(1.3); opacity:1; } 60% { transform:scale(0.95); } 100% { transform:scale(1); opacity:1; } }
     .heart-burst { animation: heartBurst .5s cubic-bezier(.34,1.56,.64,1) both; }
     html { scroll-behavior:smooth; }
-    body { margin:0; background:#FDF8FA; overscroll-behavior-y:none; }
+    html, body, #root { width:100%; min-height:100%; }
+    body { margin:0; background:#FDF8FA; overscroll-behavior-y:none; overflow-x:hidden; }
+    *, *::before, *::after { box-sizing:border-box; }
     button, input, select, textarea { -webkit-tap-highlight-color:transparent; }
     button { touch-action:manipulation; }
-    .app-shell { width:100%; max-width:430px; margin:0 auto; }
+    .app-shell { width:100%; max-width:430px; margin:0 auto; overflow-x:hidden; }
     .bottom-nav { width:100%; max-width:430px; }
-    .main-content { width:100%; }
-    .mobile-action { min-height:44px; }
-    .icon-btn { min-width:42px; min-height:42px; }
+    .main-content { width:100%; box-sizing:border-box; overflow-x:hidden; }
+    .mobile-action { min-height:46px; }
+    .icon-btn { min-width:44px; min-height:44px; }
+    .fab-pulse { right:max(20px, calc((100vw - 760px)/2 + 20px)) !important; }
+    .modal-overlay { align-items:flex-end; padding:8px 8px 0; }
+    .modal-sheet { width:100%; max-width:620px; max-height:calc(100dvh - 16px); border-radius:24px 24px 0 0; }
+    .print-only { display:none; }
+
     @media (max-width:600px) {
       input, select, textarea { font-size:16px !important; }
-      .main-content { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+      .main-content { padding-bottom:calc(96px + env(safe-area-inset-bottom)); }
       .bottom-nav { padding-bottom:env(safe-area-inset-bottom); }
-      .bottom-nav button { min-height:62px; }
+      .bottom-nav button { min-height:64px; }
     }
     @media (min-width:768px) {
       .app-shell, .bottom-nav { max-width:760px; }
-      .main-content { padding-left:12px; padding-right:12px; }
+      .modal-overlay { align-items:center; padding:24px; }
+      .modal-sheet { max-height:88vh; border-radius:24px; }
     }
-    @media (min-width:1100px) {
-      .app-shell, .bottom-nav { max-width:920px; }
-      .main-content { padding-left:24px; padding-right:24px; }
+    @media print {
+      body * { visibility:hidden !important; }
+      .print-only, .print-only * { visibility:visible !important; }
+      .print-only {
+        display:block !important;
+        position:absolute;
+        inset:0;
+        width:100%;
+        padding:24px;
+        background:#fff;
+        color:#211F1A;
+        font-family:Arial,sans-serif;
+      }
+      .print-only table { width:100%; border-collapse:collapse; }
+      .print-only th, .print-only td { padding:9px 8px; border-bottom:1px solid #ddd; text-align:left; font-size:12px; }
+      .print-only th { font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
     }
     @media (prefers-reduced-motion:reduce) {
       *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
@@ -279,7 +301,7 @@ const ONBOARDING = {
   planning: {
     emoji: "📅",
     title: "Planning des réservations",
-    desc: "Visualise tes locations confirmées sur le calendrier. Les jours occupés sont indiqués — plus jamais de double réservation !",
+    desc: "Visualise tes locations confirmées sur le calendrier et retrouve rapidement les informations utiles pour chaque date.",
     color: "#D9558C",
   },
   resa: {
@@ -779,19 +801,71 @@ function Avatar({ color, nom, size = 42 }) {
 
 function Modal({ open, onClose, title, children }) {
   if (!open) return null;
-  return (
-    <div onClick={e => e.target===e.currentTarget && onClose()} style={{ position:"fixed", inset:0, background:"rgba(26,46,31,.4)", zIndex:500, display:"flex", alignItems:"flex-end" }}>
-      <div style={{ width:"100%", maxWidth:430, margin:"0 auto", background:T.blanc, borderRadius:"24px 24px 0 0", maxHeight:"92vh", overflowY:"auto", boxShadow:"0 -8px 40px rgba(0,0,0,.2)" }}>
+
+  return createPortal(
+    <div
+      className="modal-overlay"
+      onClick={e => e.target===e.currentTarget && onClose()}
+      style={{
+        position:"fixed",
+        inset:0,
+        background:"rgba(26,46,31,.46)",
+        backdropFilter:"blur(3px)",
+        zIndex:9999,
+        display:"flex",
+        justifyContent:"center"
+      }}
+    >
+      <div
+        className="modal-sheet"
+        style={{
+          background:T.blanc,
+          overflowY:"auto",
+          overflowX:"hidden",
+          boxShadow:"0 -8px 40px rgba(0,0,0,.22)",
+          WebkitOverflowScrolling:"touch"
+        }}
+      >
         <div style={{ padding:"0 18px" }}>
-          <div style={{ width:36, height:4, borderRadius:100, background:T.vertM, margin:"12px auto 14px" }} />
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
-            <span style={{ fontWeight:900, fontSize:17, color:T.encre }}>{title}</span>
-            <button onClick={onClose} style={{ background:T.fond, border:"none", borderRadius:8, width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><X size={16} color={T.gris}/></button>
+          <div
+            style={{
+              position:"sticky",
+              top:0,
+              zIndex:5,
+              background:T.blanc,
+              paddingTop:"max(12px, env(safe-area-inset-top))",
+              paddingBottom:12,
+              borderBottom:`1px solid ${T.vertM}`
+            }}
+          >
+            <div style={{ width:38, height:4, borderRadius:100, background:T.vertM, margin:"0 auto 12px" }} />
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12 }}>
+              <span style={{ fontWeight:900, fontSize:17, color:T.encre, lineHeight:1.2 }}>{title}</span>
+              <button
+                onClick={onClose}
+                aria-label="Fermer"
+                style={{
+                  background:T.fond,
+                  border:`1px solid ${T.vertM}`,
+                  borderRadius:12,
+                  width:44,
+                  height:44,
+                  flexShrink:0,
+                  cursor:"pointer",
+                  display:"flex",
+                  alignItems:"center",
+                  justifyContent:"center"
+                }}
+              >
+                <X size={20} color={T.encre}/>
+              </button>
+            </div>
           </div>
-          <div style={{ paddingBottom:100 }}>{children}</div>
+          <div style={{ paddingTop:16, paddingBottom:"calc(34px + env(safe-area-inset-bottom))" }}>{children}</div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -805,6 +879,12 @@ function Field({ label, children }) {
 }
 
 const inputStyle = { width:"100%", background:T.fond, border:"none", borderRadius:10, padding:"12px 16px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+
+function cleanReservationNote(note) {
+  return String(note || "")
+    .replace(/^Prix modifié\s*\(catalogue:\s*[^)]+\)\s*(?:[·\-–—]\s*)?/i, "")
+    .trim();
+}
 
 function BtnPrimary({ onClick, disabled, children }) {
   return (
@@ -1273,36 +1353,13 @@ function Planning({ reservations, robes, clientes }) {
   const dayRes = reservations.filter(r => r.debut<=sel && r.fin>=sel);
 
   const printPlanning = () => {
-    const monthKey = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}`;
-    const rows = reservations
-      .filter(r => r.debut?.startsWith(monthKey))
-      .sort((a,b) => String(a.debut).localeCompare(String(b.debut)))
-      .map(r => {
-        const robe = robes.find(x=>x.id===r.rid);
-        const cl = clientes.find(x=>x.id===r.cid);
-        const debut = new Date(r.debut).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
-        const fin = new Date(r.fin).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
-        return `<tr><td>${debut}${r.fin!==r.debut?` → ${fin}`:""}</td><td>${cl?.nom||"—"}</td><td>${robe?.nom||"—"}</td><td>${r.prix||0}€</td></tr>`;
-      }).join("");
-
-    const w = window.open("", "_blank", "width=900,height=720");
-    if (!w) return;
-    const monthLabel = mois.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
-    w.document.write(`<!doctype html><html><head><title>Planning Plan Me</title>
-      <style>
-        body{font-family:Arial,sans-serif;padding:30px;color:#211F1A}
-        h1{font-size:24px;margin:0 0 4px} p{color:#777;margin:0 0 24px;text-transform:capitalize}
-        table{width:100%;border-collapse:collapse} th,td{padding:11px 10px;border-bottom:1px solid #eee;text-align:left;font-size:13px}
-        th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#777}
-      </style></head><body>
-      <h1>Plan Me — Planning des réservations</h1><p>${monthLabel}</p>
-      <table><thead><tr><th>Dates</th><th>Cliente</th><th>Pièce</th><th>Prix</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="4">Aucune réservation ce mois.</td></tr>'}</tbody></table>
-      </body></html>`);
-    w.document.close();
-    w.focus();
-    setTimeout(()=>w.print(), 250);
+    window.print();
   };
+
+  const monthKey = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}`;
+  const monthReservations = reservations
+    .filter(r => r.debut?.startsWith(monthKey))
+    .sort((a,b) => String(a.debut).localeCompare(String(b.debut)));
 
   return (
     <div style={{ padding:"0 16px" }}>
@@ -1323,13 +1380,10 @@ function Planning({ reservations, robes, clientes }) {
         return m;
       },[reservations,clientes,robes])}/>
       </div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:12 }}>
-        <div style={{ background:T.vertL, border:`1.5px solid ${T.vert}33`, borderRadius:10, padding:"10px 14px", fontSize:12, color:T.vert, fontWeight:700, flex:1 }}>
-          📅 Planning des réservations
-        </div>
-        <button className="icon-btn" onClick={printPlanning} title="Imprimer le planning" aria-label="Imprimer le planning"
-          style={{ width:42, height:42, flexShrink:0, borderRadius:10, background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 2px 8px rgba(31,58,46,.07)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <Printer size={18} color={T.encre}/>
+      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10 }}>
+        <button className="icon-btn" onClick={printPlanning} title="Imprimer" aria-label="Imprimer"
+          style={{ width:44, height:44, borderRadius:12, background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 2px 8px rgba(31,58,46,.07)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <Printer size={19} color={T.encre}/>
         </button>
       </div>
       <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:10, textTransform:"capitalize" }}>
@@ -1349,15 +1403,53 @@ function Planning({ reservations, robes, clientes }) {
                   </div>
                   <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
                 </div>
-                {r.note && (
-                  <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:8, padding:"9px 12px", fontSize:11, color:"#C44736", fontWeight:700 }}>
-                    {r.note}
+                {cleanReservationNote(r.note) && (
+                  <div style={{ background:"#FFF1F2", border:"1.5px solid #FDA4AF", borderRadius:12, padding:"12px 14px", fontSize:15, color:"#E11D48", fontWeight:900, lineHeight:1.4 }}>
+                    {cleanReservationNote(r.note)}
                   </div>
                 )}
               </div>
             );
           })
       }
+
+      <div className="print-only">
+        <h1 style={{ margin:"0 0 4px", fontSize:22 }}>Plan Me</h1>
+        <div style={{ marginBottom:18, textTransform:"capitalize" }}>
+          Planning — {mois.toLocaleDateString("fr-FR",{month:"long",year:"numeric"})}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Dates</th>
+              <th>Cliente</th>
+              <th>Pièce</th>
+              <th>Note</th>
+              <th>Prix</th>
+            </tr>
+          </thead>
+          <tbody>
+            {monthReservations.length === 0 ? (
+              <tr><td colSpan="5">Aucune réservation ce mois.</td></tr>
+            ) : monthReservations.map(r => {
+              const robe = robes.find(x=>x.id===r.rid);
+              const cl = clientes.find(x=>x.id===r.cid);
+              return (
+                <tr key={`print-${r.id}`}>
+                  <td>
+                    {new Date(r.debut).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}
+                    {r.fin!==r.debut ? ` → ${new Date(r.fin).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}` : ""}
+                  </td>
+                  <td>{cl?.nom||"—"}</td>
+                  <td>{robe?.nom||"—"}</td>
+                  <td style={{ color:"#E11D48", fontWeight:700 }}>{cleanReservationNote(r.note)||"—"}</td>
+                  <td>{r.prix||0}€</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1404,7 +1496,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       }
 
       const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
-      const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
+      const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:cleanReservationNote(form.note), user_id:_userId };
 
       if (editResaId) {
         await api("PATCH",`reservations?id=eq.${editResaId}`,data);
@@ -1477,7 +1569,11 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 } <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
                   <div style={{ fontSize:12, color:T.gris }}>{robe?.nom}</div>
-                  {r.note && <div style={{ fontSize:11, color:"#C44736", fontWeight:700, marginTop:3, lineHeight:1.35 }}>{r.note}</div>}
+                  {cleanReservationNote(r.note) && (
+                    <div style={{ fontSize:14, color:"#E11D48", fontWeight:900, marginTop:6, lineHeight:1.35 }}>
+                      {cleanReservationNote(r.note)}
+                    </div>
+                  )}
                 </div>
                 <span style={{ background:(statCol[r.statut]||T.gris)+"1A", color:statCol[r.statut]||T.gris, border:`1px solid ${statCol[r.statut]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[r.statut]||r.statut}</span>
               </div>
@@ -1554,13 +1650,17 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               </div>
               <div style={{ fontSize:11, color:T.gris, fontWeight:600 }}>Chèque caution — séparé du prix · à rendre à la fin</div>
             </div>
-            {detail.r.note && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:10, padding:"10px 14px", marginBottom:10, fontSize:12, color:T.rose, fontWeight:600, fontStyle:"italic" }}>{detail.r.note}</div>}
+            {cleanReservationNote(detail.r.note) && (
+              <div style={{ background:"#FFF1F2", border:"1.5px solid #FDA4AF", borderRadius:12, padding:"12px 14px", marginBottom:10, fontSize:15, color:"#E11D48", fontWeight:900, lineHeight:1.4 }}>
+                {cleanReservationNote(detail.r.note)}
+              </div>
+            )}
             {/* Boutons modifier / supprimer */}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
               <button onClick={()=>{
                 setDetail(null);
                 setModal(true);
-                setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:detail.r.note||"", paiement:detail.r.moyen_paiement||"", prixExc:"" });
+                setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:cleanReservationNote(detail.r.note), paiement:detail.r.moyen_paiement||"", prixExc:"" });
                 setEditResaId(detail.r.id);
               }} style={{ padding:"12px", borderRadius:9, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
                 <Edit3 size={14}/> Modifier
@@ -1671,7 +1771,6 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
             <span style={{ background:T.roseL, color:T.rose, fontSize:9, fontWeight:800, padding:"2px 7px", borderRadius:6, marginLeft:6 }}>✏️ ristourne</span>
           </div>
           <input style={{ ...inputStyle, borderColor:form.prixExc?T.rose:T.vertM, background:form.prixExc?T.roseL:T.fond }} type="number" value={form.prixExc||""} onChange={e=>setForm(p=>({...p,prixExc:e.target.value}))} placeholder={`Catalogue : ${rSelected?.prix||""}€ — laisser vide si prix normal`}/>
-          {form.prixExc && <div style={{ fontSize:11, color:T.rose, fontWeight:700, marginTop:4 }}>✏️ Prix modifié · catalogue : {rSelected?.prix}€ · appliqué : {form.prixExc}€</div>}
         </div>
         <Field label="Note"><input style={inputStyle} value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: suite à l'essayage du 11 juil."/></Field>
         <BtnPrimary onClick={save} disabled={!form.nom||!form.rid||!form.debut||!form.acompte}>Confirmer la réservation ✓</BtnPrimary>
@@ -2494,7 +2593,7 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell" style={{ fontFamily:"'Manrope',sans-serif", background:T.blanc, minHeight:"100vh", position:"relative", paddingBottom:80, boxShadow:"0 0 40px rgba(31,58,46,.04)" }}>
+    <div className="app-shell" style={{ fontFamily:"'Manrope',sans-serif", background:T.blanc, minHeight:"100vh", position:"relative", paddingBottom:80, boxShadow:"0 0 32px rgba(31,58,46,.06)", borderLeft:`1px solid ${T.vertM}`, borderRight:`1px solid ${T.vertM}` }}>
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       {signingOut && (
         <div style={{ position:"fixed", inset:0, background:T.roseL, zIndex:9999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", animation:"fadeIn .4s ease both" }}>
@@ -2553,7 +2652,9 @@ export default function App() {
           {tab==="admin" && <AdminPanel/>}
       </div>
 
-      {accountOpen && <AccountPanel user={user} onClose={()=>setAccountOpen(false)} onSignOut={()=>{ setAccountOpen(false); handleSignOut(); }}/>}\n\n      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
+      {accountOpen && <AccountPanel user={user} onClose={()=>setAccountOpen(false)} onSignOut={()=>{ setAccountOpen(false); handleSignOut(); }}/>}
+
+      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
 
       {/* Tab bar */}
       <div className="bottom-nav" style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", background:"rgba(255,255,255,.96)", backdropFilter:"blur(14px)", borderTop:`1px solid ${T.vertM}`, display:"flex", zIndex:200, boxShadow:"0 -8px 24px rgba(31,58,46,.05)" }}>
