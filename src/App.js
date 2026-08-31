@@ -1138,6 +1138,14 @@ function localDateString(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+function addMinutesToTime(time, minutes = 60) {
+  if (!time) return "";
+  const [h, m] = time.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return "";
+  const total = (h * 60 + m + minutes) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
 function isReservationFinished(r) {
   const endDate = r?.fin || r?.debut;
   return !!endDate && endDate < localDateString();
@@ -1156,13 +1164,15 @@ function BtnPrimary({ onClick, disabled, children }) {
 }
 
 // ── CATALOGUE ────────────────────────────────────────────────
-function Catalogue({ robes, setRobes, toast }) {
+function Catalogue({ robes, setRobes, reservations, toast }) {
   const [q, setQ] = useState("");
   const [modal, setModal] = useState(false);
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState({ nom:"", categorie:"", tailleMin:"", tailleMax:"", prix:"", caution:"", photoFile:null, photoPreview:null });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [dispoFrom, setDispoFrom] = useState("");
+  const [dispoTo, setDispoTo] = useState("");
 
   const filtered = useMemo(() => robes.filter(r => r.nom?.toLowerCase().includes(q.toLowerCase())), [robes, q]);
 
@@ -1299,7 +1309,7 @@ function Catalogue({ robes, setRobes, toast }) {
       </Modal>
 
       {/* Modal détail */}
-      <Modal open={!!detail} onClose={() => setDetail(null)} title={detail?.nom || ""}>
+      <Modal open={!!detail} onClose={() => { setDetail(null); setDispoFrom(""); setDispoTo(""); }} title={detail?.nom || ""}>
         {detail && (
           <>
             <div style={{ height:180, borderRadius:10, overflow:"hidden", background:`linear-gradient(135deg,${detail.shade||T.vert}22,${detail.shade||T.vert}55)`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
@@ -1316,10 +1326,81 @@ function Catalogue({ robes, setRobes, toast }) {
                 </div>
               ))}
             </div>
-            <div style={{ background:T.vertL, borderRadius:8, padding:"10px 14px", display:"flex", gap:10, alignItems:"center", marginBottom:12 }}>
-              <Check size={16} color={T.vert} />
-              <span style={{ fontSize:13, fontWeight:700, color:T.vert }}>Disponible à la location</span>
-            </div>
+            {(() => {
+              const resaRobe = reservations
+                .filter(r => r.rid===detail.id && effectiveReservationStatus(r)!=="terminee")
+                .sort((a,b)=>String(a.debut).localeCompare(String(b.debut)));
+
+              const from = dispoFrom;
+              const to = dispoTo || dispoFrom;
+              const conflit = from && to
+                ? resaRobe.find(r => r.debut <= to && (r.fin||r.debut) >= from)
+                : null;
+
+              return (
+                <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, borderRadius:10, padding:"12px 14px", marginBottom:12 }}>
+                  <div style={{ fontSize:10, fontWeight:900, color:T.gris, letterSpacing:".1em", textTransform:"uppercase", marginBottom:9 }}>
+                    Vérifier la disponibilité
+                  </div>
+
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                    <div>
+                      <div style={{ fontSize:10, color:T.gris, fontWeight:700, marginBottom:4 }}>Du</div>
+                      <input
+                        type="date"
+                        value={dispoFrom}
+                        onChange={e=>{
+                          setDispoFrom(e.target.value);
+                          if(dispoTo && e.target.value>dispoTo) setDispoTo(e.target.value);
+                        }}
+                        style={{...inputStyle,padding:"9px 8px"}}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize:10, color:T.gris, fontWeight:700, marginBottom:4 }}>Au</div>
+                      <input
+                        type="date"
+                        value={dispoTo}
+                        min={dispoFrom||undefined}
+                        onChange={e=>setDispoTo(e.target.value)}
+                        style={{...inputStyle,padding:"9px 8px"}}
+                      />
+                    </div>
+                  </div>
+
+                  {from && (
+                    <div style={{
+                      marginTop:10,
+                      borderRadius:8,
+                      padding:"9px 11px",
+                      display:"flex",
+                      gap:8,
+                      alignItems:"center",
+                      background:conflit?"#FFF1F2":"#ECFDF5",
+                      color:conflit?"#BE123C":T.vert,
+                      fontSize:12,
+                      fontWeight:900
+                    }}>
+                      {conflit ? "✕" : "✓"}
+                      {conflit
+                        ? `Indisponible — déjà réservée du ${new Date(conflit.debut+"T12:00:00").toLocaleDateString("fr-FR")} au ${new Date((conflit.fin||conflit.debut)+"T12:00:00").toLocaleDateString("fr-FR")}`
+                        : "Disponible sur cette période"}
+                    </div>
+                  )}
+
+                  {resaRobe.length>0 && (
+                    <div style={{ marginTop:10 }}>
+                      <div style={{ fontSize:10, color:T.gris, fontWeight:800, marginBottom:5 }}>Prochaines réservations</div>
+                      {resaRobe.slice(0,3).map(r=>(
+                        <div key={r.id} style={{ fontSize:11, color:T.encre, padding:"3px 0", fontWeight:650 }}>
+                          {new Date(r.debut+"T12:00:00").toLocaleDateString("fr-FR")} → {new Date((r.fin||r.debut)+"T12:00:00").toLocaleDateString("fr-FR")}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
               <button onClick={() => {
                 const r = detail;
@@ -1507,13 +1588,22 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
   const [sel, setSel] = useState(TODAY);
   const [modal, setModal] = useState(false);
   const [editEssId, setEditEssId] = useState(null);
-  const [form, setForm] = useState({ nom:"", tel:"", rid:"", heure:"10:00", note:"", modeCliente:"existante" });
+  const [form, setForm] = useState({
+    nom:"",
+    tel:"",
+    rid:"",
+    robeQuery:"",
+    heure:"10:00",
+    heureFin:"11:00",
+    note:"",
+    modeCliente:"existante"
+  });
 
   const cells = buildCal(mois, essayages.map(e => ({ date:e.date, debut:e.date, fin:e.date })));
   const dayEss = essayages.filter(e => e.date===sel);
 
   const save = async () => {
-    if (!form.nom || !form.rid) return;
+    if (!form.nom.trim() || !form.heure) return;
     let cl = clientes.find(c => c.nom.toLowerCase()===form.nom.toLowerCase());
     if (!cl || !cl.id || cl.id.startsWith('c')) {
       try {
@@ -1529,19 +1619,70 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
     }
     if (editEssId) {
       // Mode modification
-      const upd = { robe_id:form.rid, heure:form.heure, note:form.note };
-      try { await api("PATCH",`essayages?id=eq.${editEssId}`,upd); } catch(e) {}
-      setEssayages(p=>p.map(x=>x.id===editEssId?{...x,rid:form.rid,heure:form.heure,note:form.note}:x));
+      const upd = {
+        robe_id:form.rid || null,
+        heure:form.heure,
+        heure_fin:form.heureFin || null,
+        note:form.note
+      };
+      try {
+        await api("PATCH",`essayages?id=eq.${editEssId}`,upd);
+      } catch(e) {
+        console.error("Erreur modification essayage:", e);
+        toast("Impossible d'enregistrer l'essayage", "error");
+        return;
+      }
+      setEssayages(p=>p.map(x=>x.id===editEssId?{
+        ...x,
+        rid:form.rid || null,
+        heure:form.heure,
+        heure_fin:form.heureFin || null,
+        note:form.note
+      }:x));
       toast("Essayage modifié");
     } else {
-      const ess = { id:`e${Date.now()}`, cid:cl.id, rid:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note };
-      try { await api("POST","essayages",{ cliente_id:cl.id, robe_id:form.rid, date:sel, heure:form.heure, statut:"aVenir", note:form.note, user_id:_userId }); } catch(e) {}
+      if (!cl?.id) {
+        toast("Impossible d'enregistrer la cliente", "error");
+        return;
+      }
+
+      const ess = {
+        id:`e${Date.now()}`,
+        cid:cl.id,
+        rid:form.rid || null,
+        date:sel,
+        heure:form.heure,
+        heure_fin:form.heureFin || null,
+        statut:"aVenir",
+        note:form.note
+      };
+
+      try {
+        const created = await api("POST","essayages",{
+          cliente_id:cl.id,
+          robe_id:form.rid || null,
+          date:sel,
+          heure:form.heure,
+          heure_fin:form.heureFin || null,
+          statut:"aVenir",
+          note:form.note,
+          user_id:_userId
+        });
+        if (Array.isArray(created) && created[0]) {
+          ess.id = created[0].id;
+        }
+      } catch(e) {
+        console.error("Erreur création essayage:", e);
+        toast("Impossible d'enregistrer l'essayage", "error");
+        return;
+      }
+
       setEssayages(p => [...p, ess]);
       toast("Essayage enregistré");
     }
     setModal(false);
     setEditEssId(null);
-    setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"", modeCliente:"existante" });
+    setForm({ nom:"", tel:"", rid:"", robeQuery:"", heure:"10:00", heureFin:"11:00", note:"", modeCliente:"existante" });
   };
 
   return (
@@ -1571,13 +1712,24 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
                 <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:10 }}>
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
-                    <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{r?.nom} · {e.heure}</div>
+                    <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>
+                      {r?.nom ? `${r.nom} · ` : ""}{e.heure}{e.heure_fin ? ` → ${e.heure_fin}` : ""}
+                    </div>
                     {e.note && <div style={{ fontSize:11, color:T.rose, marginTop:3, fontStyle:"italic" }}>{e.note}</div>}
                   </div>
                   <span style={{ background:e.date<TODAY?T.vertL:T.orL, color:e.date<TODAY?T.gris:T.or, fontSize:10, fontWeight:700, padding:"3px 9px", borderRadius:100 }}>{e.date<TODAY?"Passé":"À venir"}</span>
                 </div>
                 <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"", modeCliente:"existante" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"6px 11px", borderRadius:7, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
+                  <button onClick={()=>{ setForm({
+                    nom:cl?.nom||"",
+                    tel:cl?.tel||"",
+                    rid:e.rid||"",
+                    robeQuery:r?.nom||"",
+                    heure:e.heure||"10:00",
+                    heureFin:e.heure_fin||addMinutesToTime(e.heure||"10:00",60),
+                    note:e.note||"",
+                    modeCliente:"existante"
+                  }); setEditEssId(e.id); setModal(true); }} style={{ padding:"6px 11px", borderRadius:7, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
                     <Edit3 size={12}/> Modifier
                   </button>
                   <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("Essayage supprimé"); }} style={{ padding:"6px 11px", borderRadius:7, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
@@ -1591,7 +1743,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
       <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
         <Plus size={24}/>
       </button>
-      <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"", modeCliente:"existante" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
+      <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", robeQuery:"", heure:"10:00", heureFin:"11:00", note:"", modeCliente:"existante" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
         {/* Toggle nouvelle / existante */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, background:T.fond, borderRadius:10, padding:4, marginBottom:14 }}>
           {[["existante","👥 Cliente existante"],["nouvelle","✨ Nouvelle cliente"]].map(([m,l])=>(
@@ -1643,33 +1795,123 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
             </Field>
           </>
         )}
-        <Field label="Pièce à essayer">
+        <Field label="Pièce à essayer — facultatif">
           {robes.length === 0
-            ? <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:8, padding:"12px 14px", fontSize:12, color:"#8B3020", fontWeight:700 }}>
-                ⚠️ Aucune pièce dans le catalogue. Ajoute d'abord des pièces dans l'onglet Catalogue.
+            ? <div style={{ background:T.fond, border:`1px solid ${T.vertM}`, borderRadius:8, padding:"12px 14px", fontSize:12, color:T.gris, fontWeight:700 }}>
+                Aucune pièce dans le catalogue — tu peux quand même enregistrer l'essayage.
               </div>
-            : <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
-                {robes.map(r => (
-                  <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:8, border:form.rid===r.id?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`, background:form.rid===r.id?T.vertL:T.blanc, cursor:"pointer" }}>
-                    {r.photo_url
-                      ? <img src={r.photo_url} alt={r.nom} style={{width:34,height:34,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
-                      : <Avatar color={r.shade} nom={r.nom} size={34}/>
-                    }
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:800, fontSize:13, color:form.rid===r.id?T.vert:T.encre }}>{r.nom}</div>
-                      <div style={{ fontSize:11, color:T.gris }}>{r.categorie} · T.{r.taille} · {r.prix}€</div>
-                    </div>
-                    {form.rid===r.id && <Check size={16} color={T.vert}/>}
+            : <>
+                <div style={{ position:"relative" }}>
+                  <Search size={15} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }}/>
+                  <input
+                    style={{...inputStyle,paddingLeft:38}}
+                    value={form.robeQuery}
+                    onChange={e=>{
+                      const value=e.target.value;
+                      setForm(p=>({...p,robeQuery:value,rid:""}));
+                    }}
+                    placeholder="Rechercher une robe..."
+                  />
+                  {form.robeQuery && (
+                    <button
+                      type="button"
+                      onClick={()=>setForm(p=>({...p,robeQuery:"",rid:""}))}
+                      style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",border:"none",background:"transparent",cursor:"pointer",padding:5}}
+                    >
+                      <X size={14} color={T.gris}/>
+                    </button>
+                  )}
+                </div>
+
+                {form.robeQuery.trim() && !form.rid && (
+                  <div style={{
+                    display:"flex",
+                    flexDirection:"column",
+                    marginTop:6,
+                    maxHeight:210,
+                    overflowY:"auto",
+                    background:T.blanc,
+                    border:`1.5px solid ${T.vert}`,
+                    borderRadius:10,
+                    boxShadow:"0 8px 24px rgba(31,58,46,.12)"
+                  }}>
+                    {robes
+                      .filter(r=>r.nom?.toLowerCase().includes(form.robeQuery.trim().toLowerCase()))
+                      .slice(0,8)
+                      .map(r => (
+                        <div
+                          key={r.id}
+                          onClick={()=>setForm(p=>({...p,rid:r.id,robeQuery:r.nom}))}
+                          style={{
+                            display:"flex",
+                            alignItems:"center",
+                            gap:10,
+                            padding:"9px 12px",
+                            cursor:"pointer",
+                            borderBottom:`1px solid ${T.vertM}55`
+                          }}
+                        >
+                          {r.photo_url
+                            ? <img src={r.photo_url} alt={r.nom} style={{width:38,height:38,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+                            : <Avatar color={r.shade} nom={r.nom} size={38}/>
+                          }
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:900,fontSize:13,color:T.encre}}>{r.nom}</div>
+                            <div style={{fontSize:11,color:T.gris}}>{r.categorie} · T.{r.taille} · {r.prix}€</div>
+                          </div>
+                        </div>
+                      ))}
+                    {robes.filter(r=>r.nom?.toLowerCase().includes(form.robeQuery.trim().toLowerCase())).length===0 && (
+                      <div style={{padding:"12px 14px",fontSize:12,color:T.gris}}>Aucune robe trouvée.</div>
+                    )}
                   </div>
-                ))}
-              </div>
+                )}
+
+                {form.rid && (
+                  <div style={{
+                    background:T.vertL,
+                    border:`1px solid ${T.vertM}`,
+                    borderRadius:8,
+                    padding:"9px 12px",
+                    marginTop:6,
+                    display:"flex",
+                    alignItems:"center",
+                    gap:8,
+                    color:T.vert,
+                    fontSize:12,
+                    fontWeight:800
+                  }}>
+                    <Check size={14}/> {form.robeQuery} sélectionnée
+                  </div>
+                )}
+              </>
           }
         </Field>
-        <Field label="Heure">
-          <input style={inputStyle} type="time" value={form.heure} onChange={e=>setForm(p=>({...p,heure:e.target.value}))}/>
-        </Field>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Field label="Heure début">
+            <input
+              style={inputStyle}
+              type="time"
+              value={form.heure}
+              onChange={e=>{
+                const start=e.target.value;
+                setForm(p=>({...p,heure:start,heureFin:addMinutesToTime(start,60)}));
+              }}
+            />
+          </Field>
+
+          <Field label="Heure fin">
+            <input
+              style={inputStyle}
+              type="time"
+              value={form.heureFin}
+              onChange={e=>setForm(p=>({...p,heureFin:e.target.value}))}
+            />
+          </Field>
+        </div>
         <Field label="Note"><input style={inputStyle} value={form.note} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="ex: voir aussi T.38"/></Field>
-        <BtnPrimary onClick={save} disabled={!form.nom||!form.rid}>{editEssId?"Enregistrer les modifications ✓":"Enregistrer l'essayage ✓"}</BtnPrimary>
+        <BtnPrimary onClick={save} disabled={!form.nom.trim()||!form.heure}>{editEssId?"Enregistrer les modifications ✓":"Enregistrer l'essayage ✓"}</BtnPrimary>
       </Modal>
     </div>
   );
@@ -2243,10 +2485,50 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                   </div>
                 ))}
               </div>
-              <div style={{ background:detail.r.statut==="terminee"?T.vertL:detail.reste>0?"#FFF0EC":T.vertL, borderRadius:8, padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <span style={{ fontSize:13, fontWeight:700, color:detail.r.statut==="terminee"?T.vert:detail.reste>0?T.rose:T.vert }}>{detail.r.statut==="terminee"?"Soldée ✓":"Reste à payer"}</span>
-                <span style={{ fontWeight:900, fontSize:18, color:detail.r.statut==="terminee"?T.vert:detail.reste>0?T.rose:T.vert }}>{detail.r.statut==="terminee"?"0€":`${detail.reste}€`}</span>
+              <div style={{ background:detail.reste<=0?T.vertL:"#FFF0EC", borderRadius:8, padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ fontSize:13, fontWeight:700, color:detail.reste<=0?T.vert:T.rose }}>
+                  {detail.reste<=0 ? "Soldée ✓" : "Reste à payer"}
+                </span>
+                <span style={{ fontWeight:900, fontSize:18, color:detail.reste<=0?T.vert:T.rose }}>
+                  {detail.reste<=0 ? "0€" : `${detail.reste}€`}
+                </span>
               </div>
+
+              {detail.reste>0 && (
+                <button
+                  type="button"
+                  onClick={async()=>{
+                    const prixTotal = Number(detail.r.prix)||0;
+                    try {
+                      await api("PATCH", `reservations?id=eq.${detail.r.id}`, { acompte:prixTotal });
+                      setReservations(prev=>prev.map(r=>r.id===detail.r.id ? {...r, acompte:prixTotal} : r));
+                      setDetail(prev=>prev ? {
+                        ...prev,
+                        r:{...prev.r, acompte:prixTotal},
+                        reste:0
+                      } : prev);
+                      toast("Réservation soldée ✓");
+                    } catch(e) {
+                      toast("Impossible de solder la réservation", "error");
+                    }
+                  }}
+                  style={{
+                    width:"100%",
+                    marginTop:9,
+                    minHeight:42,
+                    borderRadius:9,
+                    border:"none",
+                    background:T.vert,
+                    color:"#fff",
+                    fontFamily:"inherit",
+                    fontSize:12.5,
+                    fontWeight:900,
+                    cursor:"pointer"
+                  }}
+                >
+                  ✓ Marquer comme soldée
+                </button>
+              )}
               {detail.r.moyen_paiement && <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
                 <span style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".08em", textTransform:"uppercase" }}>Paiement</span>
                 <span style={{ background:T.roseL, color:T.rose, fontSize:11, fontWeight:700, padding:"3px 10px", borderRadius:100 }}>{detail.r.moyen_paiement}</span>
@@ -3074,6 +3356,8 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [user, setUser] = useState(null); // null = non connecté
   const [authChecked, setAuthChecked] = useState(false);
+  const [todayOpen, setTodayOpen] = useState(false);
+  const [todayShownForUser, setTodayShownForUser] = useState(null);
 
   const showToast = (msg, type="success") => setToast({ msg, type, key:Date.now() });
 
@@ -3272,6 +3556,14 @@ export default function App() {
 
   const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", clientes:"Clientes", stats:"Statistiques" };
 
+  useEffect(() => {
+    if (!user || loading) return;
+    const key = user.id || user.email;
+    if (todayShownForUser === key) return;
+    setTodayShownForUser(key);
+    setTodayOpen(true);
+  }, [user, loading, todayShownForUser]);
+
   const [signingOut, setSigningOut] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const isFounder = user?.email === "nafissa.tizaoui@hotmail.com";
@@ -3309,6 +3601,84 @@ export default function App() {
         </div>
       )}
 
+      <Modal open={todayOpen} onClose={()=>setTodayOpen(false)} title="Aujourd’hui">
+        {(() => {
+          const today = localDateString();
+          const retraits = reservations
+            .filter(r=>r.debut===today && effectiveReservationStatus(r)!=="terminee")
+            .sort((a,b)=>String(a.debut).localeCompare(String(b.debut)));
+          const retours = reservations
+            .filter(r=>(r.fin||r.debut)===today)
+            .sort((a,b)=>String(a.fin||a.debut).localeCompare(String(b.fin||b.debut)));
+          const essais = essayages.filter(e=>e.date===today);
+          const aEncaisser = reservations
+            .filter(r=>r.debut===today && effectiveReservationStatus(r)!=="terminee")
+            .reduce((sum,r)=>sum+Math.max(0,(Number(r.prix)||0)-(Number(r.acompte)||0)),0);
+
+          const ResaLine = ({r,type}) => {
+            const cl = clientes.find(c=>c.id===r.cid);
+            const robe = robes.find(x=>x.id===r.rid);
+            const reste = Math.max(0,(Number(r.prix)||0)-(Number(r.acompte)||0));
+            return (
+              <div style={{ display:"flex", gap:10, alignItems:"center", padding:"9px 0", borderBottom:`1px solid ${T.vertM}` }}>
+                {robe?.photo_url
+                  ? <img src={robe.photo_url} alt="" style={{width:42,height:48,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
+                  : <Avatar color={robe?.shade} nom={robe?.nom} size={42}/>}
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{ fontSize:12.5, fontWeight:900, color:T.encre }}>{robe?.nom||"Pièce"}</div>
+                  <div style={{ fontSize:11, color:T.gris, marginTop:2 }}>{cl?.nom||"Cliente"}</div>
+                  {cleanReservationNote(r.note) && <div style={{fontSize:11,color:"#E11D48",fontWeight:800,marginTop:3}}>{cleanReservationNote(r.note)}</div>}
+                </div>
+                {type==="retrait" && (
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:10,color:T.gris,fontWeight:700}}>Reste</div>
+                    <div style={{fontSize:13,fontWeight:900,color:reste>0?T.rose:T.vert}}>{reste}€</div>
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
+                {[
+                  ["Retraits",retraits.length],
+                  ["Retours",retours.length],
+                  ["À encaisser",`${aEncaisser}€`]
+                ].map(([l,v])=>(
+                  <div key={l} style={{background:T.fond,borderRadius:10,padding:"10px 7px",textAlign:"center"}}>
+                    <div style={{fontSize:9,color:T.gris,fontWeight:800,textTransform:"uppercase",letterSpacing:".06em"}}>{l}</div>
+                    <div style={{fontSize:18,color:T.encre,fontWeight:900,marginTop:4}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{fontSize:11,fontWeight:900,color:T.encre,textTransform:"uppercase",letterSpacing:".08em",marginBottom:4}}>Retraits du jour</div>
+              {retraits.length ? retraits.map(r=><ResaLine key={`ret-${r.id}`} r={r} type="retrait"/>) : <div style={{fontSize:12,color:T.gris,padding:"10px 0 16px"}}>Aucun retrait aujourd’hui.</div>}
+
+              <div style={{fontSize:11,fontWeight:900,color:T.encre,textTransform:"uppercase",letterSpacing:".08em",margin:"16px 0 4px"}}>Retours du jour</div>
+              {retours.length ? retours.map(r=><ResaLine key={`retour-${r.id}`} r={r} type="retour"/>) : <div style={{fontSize:12,color:T.gris,padding:"10px 0 16px"}}>Aucun retour aujourd’hui.</div>}
+
+              <div style={{fontSize:11,fontWeight:900,color:T.encre,textTransform:"uppercase",letterSpacing:".08em",margin:"16px 0 4px"}}>Essayages du jour</div>
+              {essais.length ? essais.map(e=>{
+                const cl=clientes.find(c=>c.id===e.cid);
+                const robe=robes.find(r=>r.id===e.rid);
+                return (
+                  <div key={e.id} style={{padding:"9px 0",borderBottom:`1px solid ${T.vertM}`}}>
+                    <div style={{fontSize:12.5,fontWeight:900,color:T.encre}}>
+                      {e.heure||""}{e.heure_fin ? ` → ${e.heure_fin}` : ""} · {cl?.nom||"Cliente"}
+                    </div>
+                    <div style={{fontSize:11,color:T.gris,marginTop:2}}>{robe?.nom||"Pièce"}</div>
+                    {e.note && <div style={{fontSize:11,color:"#E11D48",fontWeight:800,marginTop:3}}>{e.note}</div>}
+                  </div>
+                );
+              }) : <div style={{fontSize:12,color:T.gris,padding:"10px 0"}}>Aucun essayage aujourd’hui.</div>}
+            </>
+          );
+        })()}
+      </Modal>
+
       {/* Header */}
       <div style={{ background:T.blanc, padding:"14px 18px 12px", position:"sticky", top:0, zIndex:100, display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${T.vertM}` }}>
         <div style={{ display:"flex", alignItems:"baseline", gap:1 }}>
@@ -3337,7 +3707,7 @@ export default function App() {
       <div className="tab-content main-content" key={tab} style={{ paddingTop:16 }}>
           {tab==="catalogue" && <>
             {!seenTabs.catalogue && <OnboardingBubble tab="catalogue" onDismiss={()=>dismissOnboarding("catalogue")}/>}
-            <Catalogue robes={robes} setRobes={setRobes} toast={showToast}/>
+            <Catalogue robes={robes} setRobes={setRobes} reservations={reservations} toast={showToast}/>
           </>}
           {tab==="essayages" && <>
             {!seenTabs.essayages && <OnboardingBubble tab="essayages" onDismiss={()=>dismissOnboarding("essayages")}/>}
