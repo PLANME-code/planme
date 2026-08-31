@@ -264,26 +264,14 @@ const injectStyles = () => {
       .modal-sheet { max-height:88vh; border-radius:24px; }
     }
 
-    /* Catalogue : photos compactes sur tablette et ordinateur */
-    .catalogue-photo { display:block; width:100%; object-fit:cover; }
-    @media (min-width:768px) {
+    /* Catalogue responsive */
+    .catalogue-grid { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+    .catalogue-photo { display:block; width:100%; height:100% !important; object-fit:cover; }
+
+    @media (min-width:700px) {
       .catalogue-grid {
-        grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+        grid-template-columns:repeat(3, minmax(0,1fr)) !important;
         gap:14px !important;
-      }
-      .catalogue-photo {
-        aspect-ratio:4 / 5 !important;
-        height:auto !important;
-        max-height:none !important;
-      }
-    }
-    @media (min-width:1100px) {
-      .catalogue-grid {
-        grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
-      }
-      .catalogue-photo {
-        height:auto !important;
-        max-height:none !important;
       }
     }
 
@@ -300,9 +288,10 @@ const injectStyles = () => {
         color:#211F1A;
         font-family:Arial,sans-serif;
       }
-      .print-only table { width:100%; border-collapse:collapse; }
-      .print-only th, .print-only td { padding:9px 8px; border-bottom:1px solid #ddd; text-align:left; font-size:12px; }
-      .print-only th { font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+      .print-only table { width:100%; border-collapse:collapse; table-layout:auto; }
+      .print-only th, .print-only td { padding:6px 5px; border-bottom:1px solid #ddd; text-align:left; font-size:10px; vertical-align:middle; }
+      .print-only th { font-size:9px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
+      .print-only img { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     }
     @media (prefers-reduced-motion:reduce) {
       *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
@@ -1042,7 +1031,7 @@ function Catalogue({ robes, setRobes, toast }) {
         <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:12 }}>{filtered.length} pièce{filtered.length>1?"s":""}</div>
       </div>
 
-      <div style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+      <div className="catalogue-grid" style={{ padding:"0 16px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
         {filtered.map((r,i) => (
           <div key={r.id} onClick={() => setDetail(r)} className="robe-card card-anim" style={{ background:T.blanc, borderRadius:14, overflow:"hidden", cursor:"pointer", boxShadow:"0 1px 3px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.05)", animationDelay:`${Math.min(i*40,320)}ms` }}>
             <div style={{ aspectRatio:"1", position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -1634,29 +1623,54 @@ function Planning({ reservations, robes, clientes }) {
         <table>
           <thead>
             <tr>
+              <th>Photo</th>
               <th>Dates</th>
               <th>Cliente</th>
               <th>Pièce</th>
               <th>Note</th>
               <th>Prix</th>
+              <th>Restant</th>
+              <th>Caution</th>
             </tr>
           </thead>
           <tbody>
             {printReservations.length === 0 ? (
-              <tr><td colSpan="5">Aucune réservation ce mois.</td></tr>
+              <tr><td colSpan="8">Aucune réservation sur cette période.</td></tr>
             ) : printReservations.map(r => {
               const robe = robes.find(x=>x.id===r.rid);
               const cl = clientes.find(x=>x.id===r.cid);
+              const prix = Number(r.prix) || 0;
+              const acompte = Number(r.acompte) || 0;
+              const restant = Math.max(prix - acompte, 0);
+              const caution = Number(r.caution) || 0;
+
               return (
                 <tr key={`print-${r.id}`}>
                   <td>
+                    {robe?.photo_url
+                      ? <img
+                          src={robe.photo_url}
+                          alt={robe.nom || ""}
+                          style={{
+                            width:42,
+                            height:52,
+                            borderRadius:5,
+                            objectFit:"cover",
+                            display:"block"
+                          }}
+                        />
+                      : "—"}
+                  </td>
+                  <td>
                     {new Date(r.debut).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}
-                    {r.fin!==r.debut ? ` → ${new Date(r.fin).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}` : ""}
+                    {(r.fin||r.debut)!==r.debut ? ` → ${new Date(r.fin||r.debut).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}` : ""}
                   </td>
                   <td>{cl?.nom||"—"}</td>
                   <td>{robe?.nom||"—"}</td>
                   <td style={{ color:"#E11D48", fontWeight:700 }}>{cleanReservationNote(r.note)||"—"}</td>
-                  <td>{r.prix||0}€</td>
+                  <td>{prix.toLocaleString("fr-FR")}€</td>
+                  <td>{restant.toLocaleString("fr-FR")}€</td>
+                  <td>{caution.toLocaleString("fr-FR")}€</td>
                 </tr>
               );
             })}
@@ -2130,7 +2144,6 @@ function Stats({ reservations, robes }) {
       : sum;
   }, 0);
   const pm = reservations.length ? Math.round(caTotal/reservations.length) : 0;
-  const cautions = reservations.filter(r=>effectiveReservationStatus(r)!=="terminee").reduce((s,r)=>s+(+r.caution||0),0);
   const resteAEncaisser = reservations
     .filter(r=>r.statut!=="terminee")
     .reduce((s,r)=>s+Math.max(prixReel(r)-(+r.acompte||0),0),0);
@@ -2182,8 +2195,8 @@ function Stats({ reservations, robes }) {
           <div style={{ fontSize:18, color:T.rose, fontWeight:900, marginTop:2 }}>{pm}€</div>
         </div>
         <div style={{ background:T.orL, borderRadius:12, padding:"11px 13px" }}>
-          <div style={{ fontSize:10, color:T.gris, fontWeight:700 }}>Cautions en cours</div>
-          <div style={{ fontSize:18, color:T.or, fontWeight:900, marginTop:2 }}>{cautions.toLocaleString("fr-FR")}€</div>
+          <div style={{ fontSize:10, color:T.gris, fontWeight:700 }}>CA hebdo</div>
+          <div style={{ fontSize:18, color:T.or, fontWeight:900, marginTop:2 }}>{caHebdo.toLocaleString("fr-FR")}€</div>
         </div>
       </div>
 
