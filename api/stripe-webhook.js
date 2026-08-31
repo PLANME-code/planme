@@ -5,8 +5,11 @@
 // - 29,90 €/mois pendant les 3 premiers mois
 // - puis 39,90 €/mois
 //
-// Le tarif normal enregistré dans Supabase est 39.90.
-// Stripe gère automatiquement la remise de 10 € pendant 3 mois.
+// IMPORTANT :
+// Si une cliente résilie son abonnement, elle conserve l'accès
+// jusqu'à la fin de la période déjà payée.
+// Stripe enverra customer.subscription.deleted à la fin réelle
+// de l'abonnement, et l'accès sera alors coupé.
 
 import crypto from 'crypto';
 
@@ -88,7 +91,8 @@ function verifyStripeSignature(rawBody, sigHeader, secret) {
 
 async function patchSupabaseByEmail(email, data) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SERVICE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   const response = await fetch(
     `${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(
@@ -115,13 +119,19 @@ async function patchSupabaseByEmail(email, data) {
       error
     );
 
-    throw new Error('Erreur mise à jour Supabase');
+    throw new Error(
+      'Erreur mise à jour Supabase'
+    );
   }
 }
 
-async function patchSupabaseBySubscription(subscriptionId, data) {
+async function patchSupabaseBySubscription(
+  subscriptionId,
+  data
+) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SERVICE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!subscriptionId) return;
 
@@ -150,7 +160,9 @@ async function patchSupabaseBySubscription(subscriptionId, data) {
       error
     );
 
-    throw new Error('Erreur mise à jour Supabase');
+    throw new Error(
+      'Erreur mise à jour Supabase'
+    );
   }
 }
 
@@ -163,14 +175,22 @@ async function sendEmailJS({
   texteBouton,
   toEmail,
 }) {
-  const EMAILJS_SERVICE_ID = 'service_zrdnuog';
-  const EMAILJS_TEMPLATE_ID = 'template_9rkca8s';
-  const EMAILJS_PUBLIC_KEY = 'd-5YsA5j9C8wv8sVx';
+  const EMAILJS_SERVICE_ID =
+    'service_zrdnuog';
+
+  const EMAILJS_TEMPLATE_ID =
+    'template_9rkca8s';
+
+  const EMAILJS_PUBLIC_KEY =
+    'd-5YsA5j9C8wv8sVx';
+
   const EMAILJS_PRIVATE_KEY =
     process.env.EMAILJS_PRIVATE_KEY;
 
   if (!EMAILJS_PRIVATE_KEY) {
-    console.error('EMAILJS_PRIVATE_KEY manquante');
+    console.error(
+      'EMAILJS_PRIVATE_KEY manquante'
+    );
     return;
   }
 
@@ -210,13 +230,19 @@ async function sendEmailJS({
   }
 }
 
-export default async function handler(req, res) {
+export default async function handler(
+  req,
+  res
+) {
   if (req.method !== 'POST') {
     return res.status(405).end();
   }
 
-  const rawBodyBuffer = await readRawBody(req);
-  const rawBody = rawBodyBuffer.toString('utf8');
+  const rawBodyBuffer =
+    await readRawBody(req);
+
+  const rawBody =
+    rawBodyBuffer.toString('utf8');
 
   const signature =
     req.headers['stripe-signature'];
@@ -235,7 +261,9 @@ export default async function handler(req, res) {
       'Signature webhook Stripe invalide — requête rejetée'
     );
 
-    return res.status(400).send('Signature invalide');
+    return res
+      .status(400)
+      .send('Signature invalide');
   }
 
   let event;
@@ -247,7 +275,9 @@ export default async function handler(req, res) {
       'Impossible de lire le webhook Stripe'
     );
 
-    return res.status(400).send('Payload invalide');
+    return res
+      .status(400)
+      .send('Payload invalide');
   }
 
   try {
@@ -255,12 +285,14 @@ export default async function handler(req, res) {
      * ---------------------------------------------------
      * 1. CHECKOUT TERMINÉ
      * ---------------------------------------------------
-     *
-     * Premier abonnement PLAN ME réussi.
      */
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
+    if (
+      event.type ===
+      'checkout.session.completed'
+    ) {
+      const session =
+        event.data.object;
 
       const email = (
         session.customer_details?.email ||
@@ -279,15 +311,15 @@ export default async function handler(req, res) {
 
         return res
           .status(200)
-          .json({ received: true });
+          .json({
+            received: true,
+          });
       }
 
-      // Dans le cas d'un abonnement, on ne donne
-      // l'accès que si Stripe indique que le paiement
-      // de la Checkout Session est bien payé.
       if (
         session.payment_status !== 'paid' &&
-        session.payment_status !== 'no_payment_required'
+        session.payment_status !==
+          'no_payment_required'
       ) {
         console.log(
           'Checkout terminé mais paiement non confirmé:',
@@ -297,36 +329,43 @@ export default async function handler(req, res) {
 
         return res
           .status(200)
-          .json({ received: true });
+          .json({
+            received: true,
+          });
       }
 
-      await patchSupabaseByEmail(email, {
-        paid: true,
+      await patchSupabaseByEmail(
+        email,
+        {
+          paid: true,
+          plan: 'standard',
 
-        plan: 'standard',
+          // Tarif normal PLAN ME.
+          // Stripe applique la réduction
+          // pendant les 3 premiers mois.
+          prix: 39.9,
 
-        // Tarif normal PLAN ME.
-        // Les 3 premières factures sont réduites à 29,90 €
-        // directement par Stripe.
-        prix: 39.9,
+          paid_at:
+            new Date().toISOString(),
 
-        paid_at: new Date().toISOString(),
+          stripe_customer_id:
+            session.customer || null,
 
-        stripe_customer_id:
-          session.customer || null,
-
-        stripe_subscription_id:
-          session.subscription || null,
-      });
+          stripe_subscription_id:
+            session.subscription || null,
+        }
+      );
 
       // Email de bienvenue
       try {
         await sendEmailJS({
           toEmail: email,
 
-          subject: 'Bienvenue sur Plan Me 🎉',
+          subject:
+            'Bienvenue sur Plan Me 🎉',
 
-          titre: 'Bienvenue sur Plan Me !',
+          titre:
+            'Bienvenue sur Plan Me !',
 
           message:
             "Ton paiement a bien été reçu et ton abonnement est activé ! Tu peux dès maintenant te connecter à Plan Me et gérer tes locations, ton catalogue et tes réservations.",
@@ -335,7 +374,8 @@ export default async function handler(req, res) {
             process.env.SITE_URL ||
             'https://planme-dmr3.vercel.app',
 
-          texteBouton: 'Me connecter',
+          texteBouton:
+            'Me connecter',
         });
       } catch (mailError) {
         console.error(
@@ -350,19 +390,20 @@ export default async function handler(req, res) {
      * 2. FACTURE PAYÉE
      * ---------------------------------------------------
      *
-     * Stripe envoie cet événement à chaque renouvellement
-     * réussi.
-     *
-     * Cela permet notamment de réactiver automatiquement
-     * un compte si un paiement précédemment échoué finit
-     * par être réglé.
+     * À chaque renouvellement réussi,
+     * on confirme l'accès.
      */
 
-    if (event.type === 'invoice.paid') {
-      const invoice = event.data.object;
+    if (
+      event.type ===
+      'invoice.paid'
+    ) {
+      const invoice =
+        event.data.object;
 
       const subscriptionId =
-        typeof invoice.subscription === 'string'
+        typeof invoice.subscription ===
+        'string'
           ? invoice.subscription
           : invoice.subscription?.id;
 
@@ -381,15 +422,20 @@ export default async function handler(req, res) {
      * 3. PAIEMENT ÉCHOUÉ
      * ---------------------------------------------------
      *
-     * On coupe l'accès lorsqu'une facture d'abonnement
-     * échoue.
+     * Un paiement réellement échoué
+     * coupe l'accès.
      */
 
-    if (event.type === 'invoice.payment_failed') {
-      const invoice = event.data.object;
+    if (
+      event.type ===
+      'invoice.payment_failed'
+    ) {
+      const invoice =
+        event.data.object;
 
       const subscriptionId =
-        typeof invoice.subscription === 'string'
+        typeof invoice.subscription ===
+        'string'
           ? invoice.subscription
           : invoice.subscription?.id;
 
@@ -405,8 +451,16 @@ export default async function handler(req, res) {
 
     /*
      * ---------------------------------------------------
-     * 4. ABONNEMENT SUPPRIMÉ / RÉSILIÉ
+     * 4. ABONNEMENT SUPPRIMÉ
      * ---------------------------------------------------
+     *
+     * Si la cliente résilie à la fin
+     * de sa période de facturation,
+     * Stripe envoie normalement cet
+     * événement lorsque l'abonnement
+     * prend réellement fin.
+     *
+     * C'est donc ici qu'on coupe l'accès.
      */
 
     if (
@@ -428,6 +482,16 @@ export default async function handler(req, res) {
      * ---------------------------------------------------
      * 5. CHANGEMENT D'ÉTAT DE L'ABONNEMENT
      * ---------------------------------------------------
+     *
+     * IMPORTANT :
+     *
+     * cancel_at_period_end = true
+     * signifie seulement que la cliente
+     * a demandé à résilier.
+     *
+     * Si son status est toujours "active",
+     * elle conserve l'accès jusqu'à la
+     * date de fin déjà payée.
      */
 
     if (
@@ -447,6 +511,18 @@ export default async function handler(req, res) {
           subscription.status
         );
 
+      /*
+       * Exemple :
+       *
+       * status = "active"
+       * cancel_at_period_end = true
+       *
+       * => paid reste TRUE.
+       *
+       * On ne coupe donc PAS l'accès
+       * simplement parce qu'une résiliation
+       * a été demandée.
+       */
       await patchSupabaseBySubscription(
         subscription.id,
         {
@@ -455,17 +531,21 @@ export default async function handler(req, res) {
       );
     }
 
-    return res.status(200).json({
-      received: true,
-    });
+    return res
+      .status(200)
+      .json({
+        received: true,
+      });
   } catch (e) {
     console.error(
       'Erreur stripe-webhook:',
       e
     );
 
-    return res.status(500).json({
-      error: 'Erreur serveur',
-    });
+    return res
+      .status(500)
+      .json({
+        error: 'Erreur serveur',
+      });
   }
 }
