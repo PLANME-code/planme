@@ -912,6 +912,22 @@ function cleanReservationNote(note) {
     .trim();
 }
 
+function localDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function isReservationFinished(r) {
+  const endDate = r?.fin || r?.debut;
+  return !!endDate && endDate < localDateString();
+}
+
+function effectiveReservationStatus(r) {
+  return isReservationFinished(r) ? "terminee" : (r?.statut || "confirmee");
+}
+
 function BtnPrimary({ onClick, disabled, children }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{ width:"100%", background:disabled?T.gris:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:disabled?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:disabled?"none":`0 4px 16px ${T.vert}44` }}>
@@ -1520,7 +1536,17 @@ function Planning({ reservations, robes, clientes }) {
                           {cl?.nom || "Cliente"}
                         </div>
                       </div>
-                      <span style={{ background:T.roseL, color:T.rose, fontSize:9.5, fontWeight:800, padding:"3px 8px", borderRadius:100, flexShrink:0 }}>Confirmée</span>
+                      <span style={{
+                        background:effectiveReservationStatus(r)==="terminee"?T.fond:T.roseL,
+                        color:effectiveReservationStatus(r)==="terminee"?T.gris:T.rose,
+                        fontSize:9.5,
+                        fontWeight:800,
+                        padding:"3px 8px",
+                        borderRadius:100,
+                        flexShrink:0
+                      }}>
+                        {effectiveReservationStatus(r)==="terminee" ? "Terminée" : "Confirmée"}
+                      </span>
                     </div>
                     {cleanReservationNote(r.note) && (
                       <div style={{ marginTop:6, background:"#FFF1F2", border:"1px solid #FDA4AF", borderRadius:8, padding:"6px 8px", fontSize:12.5, color:"#E11D48", fontWeight:900, lineHeight:1.25 }}>
@@ -1731,15 +1757,15 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                   ? <img src={robe.photo_url} alt={robe.nom} style={{width:44,height:44,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
                   : <Avatar color={robe?.shade} nom={robe?.nom} size={44}/>
                 } <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
-                  <div style={{ fontSize:12, color:T.gris }}>{robe?.nom}</div>
+                  <div style={{ fontWeight:900, fontSize:14.5, color:T.encre }}>{robe?.nom || "Pièce"}</div>
+                  <div style={{ fontSize:12, color:T.gris, marginTop:2, fontWeight:600 }}>{cl?.nom || "Cliente"}</div>
                   {cleanReservationNote(r.note) && (
                     <div style={{ fontSize:14, color:"#E11D48", fontWeight:900, marginTop:6, lineHeight:1.35 }}>
                       {cleanReservationNote(r.note)}
                     </div>
                   )}
                 </div>
-                <span style={{ background:(statCol[r.statut]||T.gris)+"1A", color:statCol[r.statut]||T.gris, border:`1px solid ${statCol[r.statut]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[r.statut]||r.statut}</span>
+                <span style={{ background:(statCol[effectiveReservationStatus(r)]||T.gris)+"1A", color:statCol[effectiveReservationStatus(r)]||T.gris, border:`1px solid ${statCol[effectiveReservationStatus(r)]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[effectiveReservationStatus(r)]||effectiveReservationStatus(r)}</span>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:T.gris, marginBottom:r.prix>0?8:0 }}>
                 <Clock size={12}/> {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} → {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}
@@ -1997,11 +2023,11 @@ function Stats({ reservations, robes }) {
   const resThisMonth = reservations.filter(r=>r.debut?.startsWith(currentMonth));
   const caMois = resThisMonth.reduce((s,r)=>s+prixReel(r),0);
   const pm = reservations.length ? Math.round(caTotal/reservations.length) : 0;
-  const cautions = reservations.filter(r=>r.statut!=="terminee").reduce((s,r)=>s+(+r.caution||0),0);
+  const cautions = reservations.filter(r=>effectiveReservationStatus(r)!=="terminee").reduce((s,r)=>s+(+r.caution||0),0);
   const resteAEncaisser = reservations
     .filter(r=>r.statut!=="terminee")
     .reduce((s,r)=>s+Math.max(prixReel(r)-(+r.acompte||0),0),0);
-  const aVenir = reservations.filter(r => (r.fin||r.debut) >= TODAY && r.statut!=="terminee").length;
+  const aVenir = reservations.filter(r => (r.fin||r.debut) >= localDateString() && effectiveReservationStatus(r)!=="terminee").length;
 
   const parMois = useMemo(() => {
     const m={};
@@ -2720,7 +2746,7 @@ export default function App() {
     ]).then(async ([r,cl,res,ess]) => {
       if (Array.isArray(r)) setRobes(r);
       if (Array.isArray(cl)) setClientes(cl);
-      if (Array.isArray(res)) setReservations(res.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
+      if (Array.isArray(res)) setReservations(res.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id,statut:effectiveReservationStatus(x)})));
       if (Array.isArray(ess)) setEssayages(ess.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
 
       // Précharge les photos du catalogue AVANT de donner accès à l'app —
@@ -2746,6 +2772,39 @@ export default function App() {
     }).finally(()=>setLoading(false));
   },[user]);
 
+  // ── Passage automatique en "Terminée" après la date de fin ──
+  useEffect(() => {
+    if (!user || !_userId) return;
+
+    const archiveFinishedReservations = async () => {
+      const finished = reservations.filter(
+        r => isReservationFinished(r) && r.statut !== "terminee"
+      );
+
+      if (!finished.length) return;
+
+      // Mise à jour immédiate de l'affichage.
+      setReservations(prev =>
+        prev.map(r =>
+          isReservationFinished(r) ? { ...r, statut:"terminee" } : r
+        )
+      );
+
+      // Enregistrement définitif en base.
+      await Promise.allSettled(
+        finished.map(r =>
+          api("PATCH", `reservations?id=eq.${r.id}`, { statut:"terminee" })
+        )
+      );
+    };
+
+    archiveFinishedReservations();
+
+    // Si l'application reste ouverte longtemps, on re-vérifie régulièrement.
+    const timer = setInterval(archiveFinishedReservations, 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [user, reservations]);
+
   // ── Realtime : mise à jour instantanée dès qu'une donnée change en base,
   // sans avoir besoin de rafraîchir la page (multi-appareils, multi-onglets). ──
   useEffect(() => {
@@ -2760,7 +2819,7 @@ export default function App() {
           .channel(`planme-${_userId}`)
           .on('postgres_changes', { event:'*', schema:'public', table:'robes', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setRobes, payload))
           .on('postgres_changes', { event:'*', schema:'public', table:'clientes', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setClientes, payload))
-          .on('postgres_changes', { event:'*', schema:'public', table:'reservations', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setReservations, payload, row=>({cid:row.cliente_id, rid:row.robe_id})))
+          .on('postgres_changes', { event:'*', schema:'public', table:'reservations', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setReservations, payload, row=>({cid:row.cliente_id, rid:row.robe_id, statut:effectiveReservationStatus(row)})))
           .on('postgres_changes', { event:'*', schema:'public', table:'essayages', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setEssayages, payload, row=>({cid:row.cliente_id, rid:row.robe_id})))
           .subscribe();
         if (cancelled && channel) channel.unsubscribe();
