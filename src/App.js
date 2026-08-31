@@ -1929,6 +1929,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [detail, setDetail] = useState(null);
   const [editResaId, setEditResaId] = useState(null);
   const [q, setQ] = useState("");
+  const [filtreStatut, setFiltreStatut] = useState("confirmees");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
@@ -1942,7 +1943,23 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 
   const filtered = reservations.filter(r => {
     const cl = clientes.find(x=>x.id===r.cid);
-    return !q || cl?.nom.toLowerCase().includes(q.toLowerCase());
+    const robe = robes.find(x=>x.id===r.rid);
+
+    const recherche = q.trim().toLowerCase();
+    const correspondRecherche =
+      !recherche ||
+      cl?.nom?.toLowerCase().includes(recherche) ||
+      robe?.nom?.toLowerCase().includes(recherche);
+
+    const statutEffectif = effectiveReservationStatus(r);
+    const correspondStatut =
+      filtreStatut === "toutes"
+        ? true
+        : filtreStatut === "confirmees"
+          ? statutEffectif !== "terminee"
+          : statutEffectif === "terminee";
+
+    return correspondRecherche && correspondStatut;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1954,7 +1971,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 
   useEffect(() => {
     setPage(1);
-  }, [q]);
+  }, [q, filtreStatut]);
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -2038,9 +2055,43 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       <div style={{ padding:"0 16px" }}>
         <div style={{ position:"relative", marginBottom:12 }}>
           <Search size={15} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }}/>
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }}/>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une cliente ou une pièce..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }}/>
         </div>
-        <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} réservation{filtered.length>1?"s":""}</div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,minmax(0,1fr))", gap:8, marginBottom:10 }}>
+          {[
+            ["confirmees","Confirmées"],
+            ["archivees","Archivées"],
+            ["toutes","Toutes"]
+          ].map(([id,label]) => {
+            const active = filtreStatut === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setFiltreStatut(id)}
+                style={{
+                  minHeight:42,
+                  borderRadius:12,
+                  border:`1px solid ${active ? T.rose : T.vertM}`,
+                  background:active ? T.rose : T.blanc,
+                  color:active ? "#fff" : T.encre,
+                  fontFamily:"inherit",
+                  fontSize:12,
+                  fontWeight:900,
+                  cursor:"pointer",
+                  boxShadow:active ? `0 3px 10px ${T.rose}22` : "none"
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>
+          {filtered.length} réservation{filtered.length>1?"s":""}
+        </div>
       </div>
       <div style={{ padding:"0 16px" }}>
         {paginatedReservations.map((r,i) => {
@@ -2076,6 +2127,26 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
             </div>
           );
         })}
+
+        {filtered.length === 0 && (
+          <div style={{
+            background:T.blanc,
+            border:`1px solid ${T.vertM}`,
+            borderRadius:12,
+            padding:"28px 16px",
+            textAlign:"center",
+            color:T.gris,
+            fontSize:13,
+            fontWeight:700,
+            marginBottom:12
+          }}>
+            {filtreStatut==="archivees"
+              ? "Aucune réservation archivée."
+              : filtreStatut==="confirmees"
+                ? "Aucune réservation confirmée à venir."
+                : "Aucune réservation."}
+          </div>
+        )}
 
         {filtered.length > PAGE_SIZE && (
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:"8px 0 20px" }}>
