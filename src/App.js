@@ -1671,6 +1671,8 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [detail, setDetail] = useState(null);
   const [editResaId, setEditResaId] = useState(null);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 50;
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
   const [showSuggest, setShowSuggest] = useState(false);
   const [formError, setFormError] = useState("");
@@ -1684,6 +1686,21 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
     const cl = clientes.find(x=>x.id===r.cid);
     return !q || cl?.nom.toLowerCase().includes(q.toLowerCase());
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedReservations = filtered.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const rSelected = robes.find(r=>r.id===form.rid);
   const prixApplique = form.prixExc ? +form.prixExc : (+form.prix||0);
@@ -1768,7 +1785,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
         <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:10 }}>{filtered.length} réservation{filtered.length>1?"s":""}</div>
       </div>
       <div style={{ padding:"0 16px" }}>
-        {filtered.map((r,i) => {
+        {paginatedReservations.map((r,i) => {
           const robe = robes.find(x=>x.id===r.rid);
           const cl = clientes.find(x=>x.id===r.cid);
           const reste = r.prix - r.acompte;
@@ -1801,6 +1818,58 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
             </div>
           );
         })}
+
+        {filtered.length > PAGE_SIZE && (
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:"8px 0 20px" }}>
+            <button
+              onClick={() => {
+                setPage(p => Math.max(1, p - 1));
+                window.scrollTo({ top:0, behavior:"smooth" });
+              }}
+              disabled={safePage === 1}
+              style={{
+                minHeight:42,
+                padding:"0 14px",
+                borderRadius:10,
+                border:`1px solid ${T.vertM}`,
+                background:safePage===1?T.fond:T.blanc,
+                color:safePage===1?T.gris:T.encre,
+                fontFamily:"inherit",
+                fontWeight:800,
+                cursor:safePage===1?"default":"pointer",
+                opacity:safePage===1?.55:1
+              }}
+            >
+              ← Précédent
+            </button>
+
+            <div style={{ fontSize:12, fontWeight:800, color:T.gris, minWidth:72, textAlign:"center" }}>
+              {safePage} / {totalPages}
+            </div>
+
+            <button
+              onClick={() => {
+                setPage(p => Math.min(totalPages, p + 1));
+                window.scrollTo({ top:0, behavior:"smooth" });
+              }}
+              disabled={safePage === totalPages}
+              style={{
+                minHeight:42,
+                padding:"0 14px",
+                borderRadius:10,
+                border:`1px solid ${T.vertM}`,
+                background:safePage===totalPages?T.fond:T.blanc,
+                color:safePage===totalPages?T.gris:T.encre,
+                fontFamily:"inherit",
+                fontWeight:800,
+                cursor:safePage===totalPages?"default":"pointer",
+                opacity:safePage===totalPages?.55:1
+              }}
+            >
+              Suivant →
+            </button>
+          </div>
+        )}
       </div>
 
       <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
