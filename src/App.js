@@ -275,23 +275,157 @@ const injectStyles = () => {
       }
     }
 
+    @page {
+      size:A4 landscape;
+      margin:12mm 14mm;
+    }
+
     @media print {
+      html, body {
+        background:#fff !important;
+        -webkit-print-color-adjust:exact !important;
+        print-color-adjust:exact !important;
+      }
+
       body * { visibility:hidden !important; }
-      .print-only, .print-only * { visibility:visible !important; }
+
+      .print-only, .print-only * {
+        visibility:visible !important;
+      }
+
       .print-only {
         display:block !important;
         position:absolute;
         inset:0;
         width:100%;
-        padding:24px;
+        padding:0;
         background:#fff;
         color:#211F1A;
-        font-family:Arial,sans-serif;
+        font-family:Georgia, "Times New Roman", serif;
       }
-      .print-only table { width:100%; border-collapse:collapse; table-layout:auto; }
-      .print-only th, .print-only td { padding:6px 5px; border-bottom:1px solid #ddd; text-align:left; font-size:10px; vertical-align:middle; }
-      .print-only th { font-size:9px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
-      .print-only img { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+      .print-planning-header {
+        display:flex !important;
+        align-items:flex-end;
+        justify-content:space-between;
+        gap:24px;
+        padding:8px 0 14px;
+        border-bottom:3px solid #25231F;
+        margin-bottom:14px;
+      }
+
+      .print-brand {
+        font-size:31px;
+        line-height:1;
+        font-weight:900;
+        letter-spacing:-1px;
+      }
+
+      .print-brand-me {
+        color:#E95A93;
+        font-style:italic;
+      }
+
+      .print-subtitle {
+        margin-top:7px;
+        font-size:10px;
+        letter-spacing:.18em;
+        text-transform:uppercase;
+        color:#77716C;
+      }
+
+      .print-period {
+        text-align:right;
+        min-width:230px;
+      }
+
+      .print-period-main {
+        font-size:16px;
+        font-weight:900;
+      }
+
+      .print-period-sub {
+        margin-top:5px;
+        font-family:Arial,sans-serif;
+        font-size:9px;
+        color:#99918A;
+      }
+
+      .print-only table {
+        width:100%;
+        border-collapse:collapse;
+        table-layout:fixed;
+      }
+
+      .print-only thead {
+        display:table-header-group;
+      }
+
+      .print-only tr {
+        break-inside:avoid;
+        page-break-inside:avoid;
+      }
+
+      .print-only th {
+        padding:8px 7px;
+        border-bottom:2px solid #2B2925;
+        text-align:left;
+        font-size:8.5px;
+        font-weight:900;
+        text-transform:uppercase;
+        letter-spacing:.09em;
+        white-space:nowrap;
+      }
+
+      .print-only td {
+        padding:8px 7px;
+        border-bottom:1px solid #E6E0DA;
+        text-align:left;
+        font-size:9.5px;
+        vertical-align:middle;
+        line-height:1.3;
+      }
+
+      .print-only tbody tr:nth-child(even) td {
+        background:#F8F6F2 !important;
+      }
+
+      .print-only img {
+        width:54px !important;
+        height:60px !important;
+        border-radius:7px !important;
+        object-fit:cover !important;
+        display:block !important;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+      }
+
+      .print-client {
+        font-weight:900;
+      }
+
+      .print-piece {
+        font-weight:700;
+      }
+
+      .print-money {
+        white-space:nowrap;
+      }
+
+      .print-rest {
+        color:#E11D48 !important;
+        font-weight:900;
+      }
+
+      .print-note {
+        color:#E11D48 !important;
+        font-weight:700;
+        font-style:italic;
+      }
+
+      .print-status {
+        white-space:nowrap;
+      }
     }
     @media (prefers-reduced-motion:reduce) {
       *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
@@ -1616,26 +1750,56 @@ function Planning({ reservations, robes, clientes }) {
       </Modal>
 
       <div className="print-only">
-        <h1 style={{ margin:"0 0 4px", fontSize:22 }}>Plan Me</h1>
-        <div style={{ marginBottom:18, textTransform:"capitalize" }}>
-          Planning — {formatShortDate(printFrom)} → {formatShortDate(printTo)}
+        <div className="print-planning-header">
+          <div>
+            <div className="print-brand">
+              Plan<span className="print-brand-me">me</span>
+            </div>
+            <div className="print-subtitle">Planning des réservations</div>
+          </div>
+
+          <div className="print-period">
+            <div className="print-period-main">
+              {formatShortDate(printFrom)} → {formatShortDate(printTo)}
+            </div>
+            <div className="print-period-sub">Période sélectionnée</div>
+          </div>
         </div>
+
         <table>
+          <colgroup>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"12%" }}/>
+            <col style={{ width:"19%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"7%" }}/>
+            <col style={{ width:"9%" }}/>
+            <col style={{ width:"11%" }}/>
+          </colgroup>
+
           <thead>
             <tr>
               <th>Photo</th>
-              <th>Dates</th>
               <th>Cliente</th>
               <th>Pièce</th>
-              <th>Note</th>
+              <th>Début</th>
+              <th>Fin</th>
               <th>Prix</th>
-              <th>Restant</th>
+              <th>Acompte</th>
+              <th>Reste</th>
               <th>Caution</th>
+              <th>Statut</th>
+              <th>Note</th>
             </tr>
           </thead>
+
           <tbody>
             {printReservations.length === 0 ? (
-              <tr><td colSpan="8">Aucune réservation sur cette période.</td></tr>
+              <tr><td colSpan="11">Aucune réservation sur cette période.</td></tr>
             ) : printReservations.map(r => {
               const robe = robes.find(x=>x.id===r.rid);
               const cl = clientes.find(x=>x.id===r.cid);
@@ -1643,34 +1807,32 @@ function Planning({ reservations, robes, clientes }) {
               const acompte = Number(r.acompte) || 0;
               const restant = Math.max(prix - acompte, 0);
               const caution = Number(r.caution) || 0;
+              const statut = effectiveReservationStatus(r)==="terminee" ? "Terminée" : "Confirmée";
+
+              const formatPrintDay = (date) =>
+                new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR",{
+                  weekday:"short",
+                  day:"2-digit",
+                  month:"short"
+                });
 
               return (
                 <tr key={`print-${r.id}`}>
                   <td>
                     {robe?.photo_url
-                      ? <img
-                          src={robe.photo_url}
-                          alt={robe.nom || ""}
-                          style={{
-                            width:42,
-                            height:52,
-                            borderRadius:5,
-                            objectFit:"cover",
-                            display:"block"
-                          }}
-                        />
+                      ? <img src={robe.photo_url} alt={robe.nom || ""}/>
                       : "—"}
                   </td>
-                  <td>
-                    {new Date(r.debut).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}
-                    {(r.fin||r.debut)!==r.debut ? ` → ${new Date(r.fin||r.debut).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}` : ""}
-                  </td>
-                  <td>{cl?.nom||"—"}</td>
-                  <td>{robe?.nom||"—"}</td>
-                  <td style={{ color:"#E11D48", fontWeight:700 }}>{cleanReservationNote(r.note)||"—"}</td>
-                  <td>{prix.toLocaleString("fr-FR")}€</td>
-                  <td>{restant.toLocaleString("fr-FR")}€</td>
-                  <td>{caution.toLocaleString("fr-FR")}€</td>
+                  <td className="print-client">{cl?.nom||"—"}</td>
+                  <td className="print-piece">{robe?.nom||"—"}</td>
+                  <td>{formatPrintDay(r.debut)}</td>
+                  <td>{formatPrintDay(r.fin||r.debut)}</td>
+                  <td className="print-money">{prix.toLocaleString("fr-FR")}€</td>
+                  <td className="print-money">{acompte.toLocaleString("fr-FR")}€</td>
+                  <td className="print-money print-rest">{restant.toLocaleString("fr-FR")}€</td>
+                  <td className="print-money">{caution.toLocaleString("fr-FR")}€</td>
+                  <td className="print-status">{statut}</td>
+                  <td className="print-note">{cleanReservationNote(r.note)||"—"}</td>
                 </tr>
               );
             })}
