@@ -60,6 +60,46 @@ const api = async (method, path, body, retry=true) => {
   return text ? JSON.parse(text) : null;
 };
 
+// Charge le SDK Supabase JS (une seule fois) — utilisé uniquement pour le
+// Realtime (mise à jour instantanée sans avoir à rafraîchir la page).
+// Le reste de l'app continue d'utiliser les appels fetch() bruts existants.
+let _supabaseJsPromise = null;
+function loadSupabaseJS() {
+  if (_supabaseJsPromise) return _supabaseJsPromise;
+  _supabaseJsPromise = new Promise((resolve, reject) => {
+    if (window.supabase) { resolve(window.supabase); return; }
+    const existing = document.getElementById('supabase-js-sdk');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.supabase));
+      existing.addEventListener('error', () => reject(new Error("Échec chargement SDK Supabase JS")));
+      return;
+    }
+    const s = document.createElement('script');
+    s.id = 'supabase-js-sdk';
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    s.onload = () => resolve(window.supabase);
+    s.onerror = () => reject(new Error("Échec chargement SDK Supabase JS"));
+    document.head.appendChild(s);
+  });
+  return _supabaseJsPromise;
+}
+
+let _realtimeClient = null;
+async function getRealtimeClient() {
+  if (_realtimeClient) return _realtimeClient;
+  const { createClient } = await loadSupabaseJS();
+  _realtimeClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+  return _realtimeClient;
+}
+// Informe le client Realtime du token de session courant, pour que les
+// policies RLS s'appliquent correctement aux mises à jour en direct.
+async function syncRealtimeAuth() {
+  try {
+    const client = await getRealtimeClient();
+    client.realtime.setAuth(_token);
+  } catch(e) { console.error('Erreur sync Realtime auth:', e); }
+}
+
 // Auth functions
 const auth = {
   async signUp(email, password) {
@@ -105,6 +145,7 @@ const auth = {
     if (!userId) { _token = SUPABASE_KEY; throw new Error("Connexion impossible — réessaie"); }
     _userId = userId;
     try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId, email })); } catch(e) {}
+    syncRealtimeAuth();
     return { ...data, user: { ...(data.user||{}), id: userId } };
   },
   async refresh() {
@@ -124,6 +165,7 @@ const auth = {
         _userId = data.user?.id;
         const { email } = JSON.parse(s);
         try { localStorage.setItem('planme_session', JSON.stringify({ token:data.access_token, refreshToken:data.refresh_token, userId:data.user?.id, email })); } catch(e) {}
+        syncRealtimeAuth();
         return true;
       }
     } catch(e) {}
@@ -145,6 +187,7 @@ const auth = {
         const { token, userId, email } = JSON.parse(s);
         _token = token;
         _userId = userId;
+        syncRealtimeAuth();
         return { token, userId, email };
       }
     } catch(e) {}
@@ -270,20 +313,39 @@ function PasswordStrength({ password }) {
   );
 }
 
-function AuthScreen({ onAuth, initialError }) {
+function AuthScreen({ onAuth, initialError, initialPaymentEmail }) {
   const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialPaymentEmail || "");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError || "");
   const [success, setSuccess] = useState("");
   const [exiting, setExiting] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(!!initialPaymentEmail);
+
+  const payNow = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement");
+      window.location.href = data.url;
+    } catch(e) {
+      setError(e.message || "Erreur lors du paiement — réessaie.");
+      setLoading(false);
+    }
+  };
 
   const pwStrong = password.length>=8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 
   const submit = async () => {
-    if (!email || !password) return;
+    if (!email || (mode !== "forgot" && !password)) return;
     if (mode==="signup" && !pwStrong) { setError("Mot de passe trop faible — respecte les critères ci-dessous."); return; }
     setLoading(true);
     setError("");
@@ -306,6 +368,10 @@ function AuthScreen({ onAuth, initialError }) {
           headers:{ apikey:SUPABASE_KEY, "Content-Type":"application/json" },
           body: JSON.stringify({ email })
         });
+        if (!res.ok) {
+          const data = await res.json().catch(()=>({}));
+          throw new Error(data?.msg || data?.error_description || "Erreur lors de l'envoi de l'email.");
+        }
         setSuccess("📧 Email de réinitialisation envoyé ! Vérifie ta boîte mail.");
         setMode("login");
       } else {
@@ -337,7 +403,7 @@ function AuthScreen({ onAuth, initialError }) {
         }
         if (!access.paid && access.plan !== 'admin' && access.plan !== 'fondateur') {
           await auth.signOut();
-          setError("💳 Votre accès a été validé ! Vérifiez votre email pour finaliser le paiement.");
+          setPaymentPending(true);
           setLoading(false);
           return;
         }
@@ -357,6 +423,30 @@ function AuthScreen({ onAuth, initialError }) {
   };
 
   const inp = { width:"100%", background:T.fond, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+
+  if (paymentPending) {
+    return (
+      <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+        <div style={{ marginBottom:34, textAlign:"center" }}>
+          <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+            Plan<span style={{ color:T.rose }}>me</span>
+          </div>
+        </div>
+        <div style={{ width:"100%", maxWidth:380, background:"#FFFFFF", borderRadius:10, padding:"32px 26px", boxShadow:"0 20px 50px rgba(0,0,0,.22)", textAlign:"center" }}>
+          <div style={{ fontSize:38, marginBottom:14 }}>💳</div>
+          <div style={{ fontWeight:900, fontSize:18, color:T.encre, marginBottom:8 }}>Ton accès est validé !</div>
+          <div style={{ fontSize:13, color:T.gris, marginBottom:22, lineHeight:1.5 }}>Il ne reste plus qu'à finaliser ton abonnement pour débloquer Plan Me.</div>
+          {error && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>}
+          <button onClick={payNow} disabled={loading} style={{ width:"100%", background:loading?T.gris:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:loading?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:loading?"none":`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+            {loading && <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid rgba(255,255,255,.3)", borderTop:"2.5px solid #fff", borderRadius:"50%", animation:"spin .7s linear infinite" }}/>}
+            {loading ? "Redirection..." : "Payer et débloquer l'accès →"}
+          </button>
+          <button onClick={()=>{ setPaymentPending(false); setError(""); }} style={{ marginTop:16, background:"none", border:"none", color:T.gris, fontWeight:700, cursor:"pointer", fontFamily:"inherit", fontSize:12 }}>← Retour à la connexion</button>
+        </div>
+        <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit", opacity:exiting?0:1, transition:"opacity .5s ease" }}>
@@ -436,6 +526,154 @@ function AuthScreen({ onAuth, initialError }) {
         Plan Me · Données sécurisées · Sans engagement
       </div>
 
+      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function ResetPasswordScreen({ token, onDone }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const pwStrong = password.length>=8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+  const match = password && password === confirm;
+
+  const submit = async () => {
+    if (!pwStrong) { setError("Mot de passe trop faible — respecte les critères ci-dessous."); return; }
+    if (!match) { setError("Les deux mots de passe ne correspondent pas."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(data?.msg || data?.error_description || data?.error || "Erreur lors de la mise à jour du mot de passe");
+      setSuccess(true);
+    } catch(e) {
+      setError(e.message || "Une erreur est survenue.");
+    }
+    setLoading(false);
+  };
+
+  const inp = { width:"100%", background:T.fond, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", borderRadius:8, padding:"12px 14px", fontSize:15, fontFamily:"inherit", fontWeight:600, color:T.encre, outline:"none", boxSizing:"border-box" };
+
+  return (
+    <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+      <div style={{ marginBottom:34, textAlign:"center" }}>
+        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+          Plan<span style={{ color:T.rose }}>me</span>
+        </div>
+      </div>
+      <div style={{ width:"100%", maxWidth:380, background:"#FFFFFF", borderRadius:10, padding:"26px 22px", boxShadow:"0 20px 50px rgba(0,0,0,.22)" }}>
+        {success ? (
+          <>
+            <div style={{ fontSize:34, textAlign:"center", marginBottom:10 }}>✅</div>
+            <div style={{ fontWeight:900, fontSize:16, color:T.encre, textAlign:"center", marginBottom:8 }}>Mot de passe mis à jour !</div>
+            <div style={{ fontSize:13, color:T.gris, textAlign:"center", marginBottom:20, lineHeight:1.5 }}>Tu peux maintenant te connecter avec ton nouveau mot de passe.</div>
+            <BtnPrimary onClick={onDone}>Aller à la connexion →</BtnPrimary>
+          </>
+        ) : (
+          <>
+            <div style={{ fontWeight:900, fontSize:17, color:T.encre, marginBottom:6 }}>Nouveau mot de passe</div>
+            <div style={{ fontSize:12, color:T.gris, marginBottom:18 }}>Choisis un nouveau mot de passe pour ton compte.</div>
+
+            <div style={{ marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Nouveau mot de passe</div>
+              <div style={{ position:"relative" }}>
+                <input value={password} onChange={e=>{setPassword(e.target.value); setError("");}} type={showPass?"text":"password"} placeholder="••••••••" style={{ ...inp, paddingRight:46 }}/>
+                <button onClick={()=>setShowPass(p=>!p)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", fontSize:16, color:T.gris }}>{showPass?"🙈":"👁️"}</button>
+              </div>
+            </div>
+            <PasswordStrength password={password}/>
+
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, fontWeight:800, color:T.gris, letterSpacing:".14em", textTransform:"uppercase", marginBottom:5 }}>Confirmer le mot de passe</div>
+              <input value={confirm} onChange={e=>{setConfirm(e.target.value); setError("");}} type={showPass?"text":"password"} placeholder="••••••••" style={inp} onKeyDown={e=>e.key==="Enter"&&submit()}/>
+              {confirm && !match && <div style={{ fontSize:11, color:T.rose, fontWeight:700, marginTop:4 }}>Les mots de passe ne correspondent pas</div>}
+            </div>
+
+            {error && <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>}
+
+            <button onClick={submit} disabled={loading||!pwStrong||!match} style={{ width:"100%", background:loading||!pwStrong||!match?T.gris:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:loading||!pwStrong||!match?"not-allowed":"pointer", fontFamily:"inherit", boxShadow:loading||!pwStrong||!match?"none":`0 4px 16px ${T.vert}44`, display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+              {loading && <span style={{ display:"inline-block", width:18, height:18, border:"2.5px solid rgba(255,255,255,.3)", borderTop:"2.5px solid #fff", borderRadius:"50%", animation:"spin .7s linear infinite" }}/>}
+              {loading ? "Mise à jour..." : "Valider le nouveau mot de passe →"}
+            </button>
+          </>
+        )}
+        <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
+}
+
+function PayerRedirectScreen({ email }) {
+  const [error, setError] = useState("");
+  const [retrying, setRetrying] = useState(false);
+
+  const goPay = async () => {
+    setError("");
+    setRetrying(true);
+    try {
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur lors de la création du paiement");
+      window.location.href = data.url;
+    } catch(e) {
+      setError(e.message || "Une erreur est survenue.");
+      setRetrying(false);
+    }
+  };
+
+  useEffect(() => { goPay(); }, []);
+
+  return (
+    <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit", textAlign:"center" }}>
+      <div style={{ marginBottom:34 }}>
+        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+          Plan<span style={{ color:T.rose }}>me</span>
+        </div>
+      </div>
+      <div style={{ width:"100%", maxWidth:380, background:"#FFFFFF", borderRadius:10, padding:"32px 26px", boxShadow:"0 20px 50px rgba(0,0,0,.22)" }}>
+        {error ? (
+          <>
+            <div style={{ fontSize:34, marginBottom:10 }}>⚠️</div>
+            <div style={{ fontWeight:900, fontSize:16, color:T.encre, marginBottom:8 }}>Impossible de continuer</div>
+            <div style={{ background:T.roseL, border:`1.5px solid ${T.rose}44`, borderRadius:8, padding:"10px 14px", marginBottom:16, fontSize:12, fontWeight:700, color:T.rose }}>{error}</div>
+            <button onClick={goPay} disabled={retrying} style={{ width:"100%", background:T.vert, color:"#fff", border:"none", borderRadius:10, padding:"14px", fontWeight:900, fontSize:15, cursor:"pointer", fontFamily:"inherit", boxShadow:`0 4px 16px ${T.vert}44` }}>Réessayer</button>
+          </>
+        ) : (
+          <>
+            <span style={{ display:"inline-block", width:28, height:28, border:"3px solid rgba(232,105,159,.25)", borderTop:`3px solid ${T.rose}`, borderRadius:"50%", animation:"spin .7s linear infinite", marginBottom:16 }}/>
+            <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>Redirection vers le paiement...</div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function AppLoadingScreen({ step }) {
+  return (
+    <div style={{ minHeight:"100vh", background:T.roseL, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"32px 24px", fontFamily:"inherit" }}>
+      <div style={{ marginBottom:40, textAlign:"center", animation:"fadeUp .6s ease both" }}>
+        <div style={{ fontFamily:"'Fraunces',serif", fontStyle:"italic", fontWeight:600, fontSize:46, color:T.encre, letterSpacing:-0.5, lineHeight:1 }}>
+          Plan<span style={{ color:T.rose }}>me</span>
+        </div>
+      </div>
+      <span style={{ display:"inline-block", width:32, height:32, border:"3px solid rgba(232,105,159,.25)", borderTop:`3px solid ${T.rose}`, borderRadius:"50%", animation:"spin .7s linear infinite", marginBottom:18 }}/>
+      <div style={{ fontSize:13, fontWeight:700, color:T.encre, opacity:.75 }}>{step || "Préparation de ton espace..."}</div>
       <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
     </div>
   );
@@ -1066,6 +1304,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [q, setQ] = useState("");
   const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
   const [showSuggest, setShowSuggest] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const suggestions = form.nom.trim().length>0
     ? clientes.filter(c => c.nom.toLowerCase().includes(form.nom.trim().toLowerCase())).slice(0,6)
@@ -1082,35 +1321,68 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 
   const save = async () => {
     if (!form.nom || !form.rid || !form.debut || !form.acompte) return;
+    setFormError("");
     let cl = clientes.find(c=>c.nom.toLowerCase()===form.nom.toLowerCase());
-    if (!cl) {
-      cl = { id:`c${Date.now()}`, nom:form.nom, tel:form.tel };
-      try { const r = await api("POST","clientes",cl); if(Array.isArray(r)&&r[0]) cl=r[0]; } catch(e) {}
-      setClientes(p => [...p, cl]);
-    }
-    const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
-    const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
-    const local = { id:`v${Date.now()}`, cid:cl.id, rid:form.rid, ...data };
-    console.log('_userId before insert:', _userId, 'data:', JSON.stringify(data));
-    if (editResaId) {
-      try { await api("PATCH",`reservations?id=eq.${editResaId}`,data); } catch(e) { console.error('PATCH error:', e); }
-      setReservations(p=>p.map(x=>x.id===editResaId?{...x,...local,id:editResaId}:x));
-      toast("Réservation modifiée");
-    } else {
-      try { 
-        const r = await api("POST","reservations",data); 
-        console.log('POST result:', r);
-        if(Array.isArray(r)&&r[0]) setReservations(p=>[...p,{...r[0],cid:r[0].cliente_id,rid:r[0].robe_id}]);
-        else setReservations(p => [...p, local]);
-      } catch(e) { 
-        console.error('POST error:', e);
-        setReservations(p => [...p, local]);
+    let clienteJusteCreee = false; // pour rollback si la réservation échoue ensuite
+
+    try {
+      // Créer la cliente si elle n'existe pas — SANS id local bidon (l'ancien
+      // `c${Date.now()}` n'était pas un UUID valide et faisait échouer l'insertion
+      // de la réservation sans que la cliente ne voie d'erreur).
+      if (!cl) {
+        const r = await api("POST","clientes",{ nom:form.nom, tel:form.tel, user_id:_userId });
+        if (!Array.isArray(r) || !r[0] || !r[0].id) throw new Error("Échec création cliente");
+        cl = r[0];
+        clienteJusteCreee = true;
+        setClientes(p => [...p, cl]);
       }
-      toast("Réservation confirmée");
+
+      const prixFinal = form.prixExc ? +form.prixExc : +form.prix;
+      const data = { cliente_id:cl.id, robe_id:form.rid, debut:form.debut, fin:form.fin||form.debut, prix:prixFinal, caution:+form.caution, acompte:+form.acompte, statut:"confirmee", moyen_paiement:form.paiement||null, note:form.prixExc?`Prix modifié (catalogue: ${form.prix}€) ${form.note?'· '+form.note:''}`:form.note, user_id:_userId };
+
+      if (editResaId) {
+        await api("PATCH",`reservations?id=eq.${editResaId}`,data);
+        setReservations(p=>p.map(x=>x.id===editResaId?{...x,...data,cid:cl.id,rid:form.rid,id:editResaId}:x));
+        toast("Réservation modifiée");
+      } else {
+        const r = await api("POST","reservations",data);
+        if (!Array.isArray(r) || !r[0] || !r[0].id) throw new Error("Échec création réservation");
+        setReservations(p=>[...p,{...r[0],cid:r[0].cliente_id,rid:r[0].robe_id}]);
+        toast("Réservation confirmée ✓");
+      }
+
+      setModal(false);
+      setEditResaId(null);
+      setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
+
+    } catch(e) {
+      console.error('Erreur réservation:', e);
+
+      // Rollback : si on venait de créer la cliente pour cette réservation
+      // et que la réservation échoue finalement, on supprime la fiche
+      // orpheline plutôt que de la laisser traîner sans réservation.
+      if (clienteJusteCreee && cl?.id) {
+        try {
+          await api("DELETE", `clientes?id=eq.${cl.id}`, null);
+          setClientes(p => p.filter(x => x.id !== cl.id));
+        } catch(delErr) {
+          console.error('Erreur lors du rollback cliente:', delErr);
+        }
+      }
+
+      const msg = String(e?.message || e);
+      const isConflit = msg.includes("no_overlapping_reservations") || msg.includes("23P01") || msg.includes("exclusion");
+      const msgPlain = isConflit
+        ? "Cette pièce est déjà réservée sur ces dates. Choisis d'autres dates ou une autre pièce."
+        : "La réservation n'a pas pu être enregistrée. Réessaie.";
+      toast((isConflit ? "⚠️ " : "❌ ") + msgPlain, "error");
+      // Bannière persistante dans le formulaire — contrairement au toast (2,5s puis
+      // disparaît), elle reste visible tant que la cliente n'a pas relancé une tentative.
+      // (Le pictogramme est déjà affiché par la bannière elle-même, on ne le répète pas ici.)
+      setFormError(msgPlain);
+      // On ne ferme PAS le modal et on n'ajoute RIEN à l'affichage tant que
+      // ce n'est pas confirmé en base — plus de fausse confirmation.
     }
-    setModal(false);
-    setEditResaId(null);
-    setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
   };
 
   const statCol = { confirmee:T.rose, enCours:T.vert, terminee:T.gris };
@@ -1241,14 +1513,20 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
       </Modal>
 
       {/* Modal nouvelle réservation */}
-      <Modal open={modal} onClose={() => setModal(false)} title="Nouvelle réservation">
+      <Modal open={modal} onClose={() => { setModal(false); setFormError(""); }} title="Nouvelle réservation">
+        {formError && (
+          <div style={{ background:"#FDECEC", border:"1.5px solid #E24C4C", borderRadius:9, padding:"11px 14px", marginBottom:14, fontSize:12.5, color:"#B01E1E", fontWeight:700, display:"flex", gap:8, alignItems:"flex-start" }}>
+            <span style={{ fontSize:15, lineHeight:1 }}>⚠️</span>
+            <span>{formError}</span>
+          </div>
+        )}
         <div style={{ background:T.vertL, borderRadius:8, padding:"9px 13px", marginBottom:14, fontSize:12, color:T.vert, fontWeight:700 }}>✨ Suite à un essayage ? La cliente sera retrouvée automatiquement</div>
         <Field label="Cliente">
           <div style={{ position:"relative" }}>
             <input
               style={inputStyle}
               value={form.nom}
-              onChange={e=>{ setForm(p=>({...p,nom:e.target.value})); setShowSuggest(true); }}
+              onChange={e=>{ setForm(p=>({...p,nom:e.target.value})); setShowSuggest(true); setFormError(""); }}
               onFocus={()=>setShowSuggest(true)}
               onBlur={()=>setTimeout(()=>setShowSuggest(false),150)}
               placeholder="Prénom Nom"
@@ -1290,8 +1568,8 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
           </div>
         </Field>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-          <Field label="Date début"><input style={inputStyle} type="date" value={form.debut} onChange={e=>setForm(p=>({...p,debut:e.target.value}))}/></Field>
-          <Field label="Date fin"><input style={inputStyle} type="date" value={form.fin} onChange={e=>setForm(p=>({...p,fin:e.target.value}))}/></Field>
+          <Field label="Date début"><input style={inputStyle} type="date" value={form.debut} onChange={e=>{setForm(p=>({...p,debut:e.target.value})); setFormError("");}}/></Field>
+          <Field label="Date fin"><input style={inputStyle} type="date" value={form.fin} onChange={e=>{setForm(p=>({...p,fin:e.target.value})); setFormError("");}}/></Field>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           <Field label="Prix (€)"><input style={inputStyle} type="number" value={form.prix} onChange={e=>setForm(p=>({...p,prix:e.target.value}))} placeholder={rSelected?.prix?.toString()||""}/></Field>
@@ -1631,13 +1909,43 @@ function AdminPanel() {
     }).finally(()=>setLoading(false));
   },[]);
 
+  // Realtime : voit apparaître les nouvelles inscriptions et les paiements
+  // confirmés automatiquement, sans avoir à recharger la page.
+  useEffect(() => {
+    let channel;
+    let cancelled = false;
+    (async () => {
+      try {
+        const client = await getRealtimeClient();
+        client.realtime.setAuth(_token);
+        channel = client
+          .channel('planme-admin-users')
+          .on('postgres_changes', { event:'*', schema:'public', table:'users_approved' }, payload => {
+            setUsers(prev => {
+              if (payload.eventType === 'DELETE') return prev.filter(u => u.email !== payload.old.email);
+              const exists = prev.some(u => u.email === payload.new.email);
+              if (exists) return prev.map(u => u.email === payload.new.email ? payload.new : u);
+              return [payload.new, ...prev];
+            });
+          })
+          .subscribe();
+        if (cancelled && channel) channel.unsubscribe();
+      } catch(e) { console.error('Erreur connexion Realtime admin:', e); }
+    })();
+    return () => { cancelled = true; if (channel) channel.unsubscribe(); };
+  },[]);
+
   const approve = async (email) => {
     if (!EMAILJS_SERVICE_ID.startsWith("REMPLACE")) {
       try {
         const emailjs = await loadEmailJS();
         await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_APPROVE_ID, {
           to_email: email,
-          message: "Bonne nouvelle, ta demande d'accès à Plan Me a été validée ! Il ne reste plus qu'à finaliser le paiement pour débloquer ton accès complet — tu seras contactée sous peu avec les détails."
+          email_subject: "Ton accès Plan Me a été validé ! 🎉",
+          titre: "Ta demande a été validée !",
+          message: "Bonne nouvelle, ta demande d'accès à Plan Me a été validée ! Clique sur le bouton ci-dessous pour finaliser ton paiement et débloquer ton accès complet.",
+          lien_action: `${window.location.origin}/?payer=${encodeURIComponent(email.toLowerCase().trim())}`,
+          texte_bouton: "Payer et débloquer mon accès",
         });
       } catch(e) { console.error("Erreur envoi email approbation:", e); }
     }
@@ -1650,13 +1958,12 @@ function AdminPanel() {
   };
 
   const setPaid = async (email, plan, prix) => {
-    const paid_at = new Date().toISOString();
     await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
       method:"PATCH",
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${_token}`, "Content-Type":"application/json" },
-      body: JSON.stringify({ paid:true, plan, prix, paid_at })
+      body: JSON.stringify({ paid:true, plan, prix, paid_at: new Date().toISOString() })
     });
-    setUsers(p => p.map(u => u.email===email ? {...u, paid:true, plan, prix, paid_at} : u));
+    setUsers(p => p.map(u => u.email===email ? {...u, paid:true, plan, prix} : u));
   };
 
   const revoke = async (email) => {
@@ -1748,25 +2055,13 @@ function AdminPanel() {
             </div>
           </div>
           <div style={{ fontSize:11, color:T.gris, marginBottom:8 }}>{u.note}</div>
-          {u.paid && u.plan==="fondateur" && u.paid_at && (() => {
-            const months = (Date.now() - new Date(u.paid_at).getTime()) / (1000*60*60*24*30.44);
-            return months >= 3 ? (
-              <div style={{ background:T.roseL, color:T.rose, fontSize:11, fontWeight:700, padding:"6px 10px", borderRadius:8, marginBottom:8 }}>
-                ⏰ Plus de 3 mois écoulés — pense à repasser au tarif Standard (39,90€)
-              </div>
-            ) : (
-              <div style={{ fontSize:10, color:T.gris, marginBottom:8 }}>
-                Tarif Fondatrice depuis {Math.floor(months)} mois — passera à 39,90€ après 3 mois
-              </div>
-            );
-          })()}
           {!u.paid && u.plan!=="admin" && (
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-              <button onClick={()=>setPaid(u.email,"fondateur",29.9)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
-                💚 Fondatrice 29,90€<br/><span style={{ fontWeight:600, fontSize:9 }}>3 premiers mois</span>
+              <button onClick={()=>setPaid(u.email,"fondateur",79)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                💚 Fondateur 79€
               </button>
-              <button onClick={()=>setPaid(u.email,"standard",39.9)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
-                ✓ Standard 39,90€<br/><span style={{ fontWeight:600, fontSize:9 }}>par mois</span>
+              <button onClick={()=>setPaid(u.email,"standard",99)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                ✓ Standard 99€
               </button>
             </div>
           )}
@@ -1783,6 +2078,33 @@ function AdminPanel() {
   );
 }
 
+// Précharge une liste d'images (photos des robes) avant d'afficher l'app —
+// évite l'effet "popcorn" où les photos apparaissent une par une pendant que
+// la personne navigue déjà dans l'interface.
+function preloadImages(urls) {
+  const unique = [...new Set(urls.filter(Boolean))];
+  return Promise.all(unique.map(url => new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = () => resolve(); // une photo cassée ne doit pas bloquer tout le chargement
+    img.src = url;
+  })));
+}
+
+// Applique un événement Realtime (INSERT/UPDATE/DELETE) reçu de Supabase à un
+// état React local, sans avoir besoin de tout recharger depuis le serveur.
+function applyRealtimeChange(setState, payload, mapExtra) {
+  setState(prev => {
+    if (payload.eventType === 'DELETE') {
+      return prev.filter(x => x.id !== payload.old.id);
+    }
+    const row = mapExtra ? { ...payload.new, ...mapExtra(payload.new) } : payload.new;
+    const exists = prev.some(x => x.id === row.id);
+    if (exists) return prev.map(x => x.id === row.id ? { ...x, ...row } : x);
+    return [...prev, row];
+  });
+}
+
 // ── APP ───────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("catalogue");
@@ -1791,6 +2113,7 @@ export default function App() {
   const [reservations, setReservations] = useState([]);
   const [essayages, setEssayages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingStep, setLoadingStep] = useState("Préparation de ton espace...");
   const [toast, setToast] = useState(null);
   const [user, setUser] = useState(null); // null = non connecté
   const [authChecked, setAuthChecked] = useState(false);
@@ -1801,6 +2124,20 @@ export default function App() {
 
   // Vérifier session existante au démarrage + gérer confirmation email
   const [pendingAuthError, setPendingAuthError] = useState("");
+  const [pendingPaymentEmail, setPendingPaymentEmail] = useState("");
+  const [recoveryToken, setRecoveryToken] = useState(null);
+  const [payerEmail, setPayerEmail] = useState(null);
+
+  // Lien direct de paiement envoyé par email (?payer=email@x.com) — pas besoin
+  // d'être connectée, redirige directement vers Stripe.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get('payer');
+    if (p) {
+      setPayerEmail(p);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
   useEffect(() => {
     (async () => {
       // Vérifier si on revient d'une confirmation email (hash dans l'URL)
@@ -1808,6 +2145,17 @@ export default function App() {
       if (hash && hash.includes('access_token')) {
         const params = new URLSearchParams(hash.replace('#',''));
         const token = params.get('access_token');
+        const linkType = params.get('type');
+
+        // Lien "mot de passe oublié" : on affiche le vrai formulaire de
+        // réinitialisation, on ne connecte PAS automatiquement.
+        if (token && linkType === 'recovery') {
+          window.history.replaceState({}, '', window.location.pathname);
+          setRecoveryToken(token);
+          setAuthChecked(true);
+          return;
+        }
+
         if (token) {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
@@ -1832,7 +2180,8 @@ export default function App() {
             } else if (!access.approved) {
               setPendingAuthError("⏳ Email confirmé ! Votre demande est en cours de validation, vous serez contactée sous 24h.");
             } else if (!access.paid && access.plan !== 'admin' && access.plan !== 'fondateur') {
-              setPendingAuthError("💳 Votre accès a été validé ! Vérifiez votre email pour finaliser le paiement.");
+              setPendingAuthError(""); // pas d'écran d'erreur ici, on gère via paymentPending côté AuthScreen
+              setPendingPaymentEmail(email.toLowerCase().trim());
             } else {
               // Accès OK — connexion autorisée
               _token = token;
@@ -1864,16 +2213,31 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
+    setLoadingStep("Chargement de tes données...");
     Promise.all([
       api("GET",`robes?select=*&user_id=eq.${_userId}&order=created_at`),
       api("GET",`clientes?select=*&user_id=eq.${_userId}&order=nom`),
       api("GET",`reservations?select=*&user_id=eq.${_userId}&order=created_at`),
       api("GET",`essayages?select=*&user_id=eq.${_userId}&order=date`),
-    ]).then(([r,cl,res,ess]) => {
+    ]).then(async ([r,cl,res,ess]) => {
       if (Array.isArray(r)) setRobes(r);
       if (Array.isArray(cl)) setClientes(cl);
       if (Array.isArray(res)) setReservations(res.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
       if (Array.isArray(ess)) setEssayages(ess.map(x=>({...x,cid:x.cliente_id,rid:x.robe_id})));
+
+      // Précharge les photos du catalogue AVANT de donner accès à l'app —
+      // avec une limite de 8 secondes pour ne jamais bloquer indéfiniment
+      // si une photo est lente ou cassée.
+      if (Array.isArray(r) && r.length) {
+        setLoadingStep(`Chargement des photos...`);
+        const photoUrls = r.map(x=>x.photo_url).filter(Boolean);
+        if (photoUrls.length) {
+          await Promise.race([
+            preloadImages(photoUrls),
+            new Promise(resolve => setTimeout(resolve, 8000)),
+          ]);
+        }
+      }
     }).catch(async (e) => {
       console.error(e);
       if (String(e.message||"").includes("Session expirée")) {
@@ -1882,6 +2246,29 @@ export default function App() {
         setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
       }
     }).finally(()=>setLoading(false));
+  },[user]);
+
+  // ── Realtime : mise à jour instantanée dès qu'une donnée change en base,
+  // sans avoir besoin de rafraîchir la page (multi-appareils, multi-onglets). ──
+  useEffect(() => {
+    if (!user) return;
+    let channel;
+    let cancelled = false;
+    (async () => {
+      try {
+        const client = await getRealtimeClient();
+        client.realtime.setAuth(_token);
+        channel = client
+          .channel(`planme-${_userId}`)
+          .on('postgres_changes', { event:'*', schema:'public', table:'robes', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setRobes, payload))
+          .on('postgres_changes', { event:'*', schema:'public', table:'clientes', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setClientes, payload))
+          .on('postgres_changes', { event:'*', schema:'public', table:'reservations', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setReservations, payload, row=>({cid:row.cliente_id, rid:row.robe_id})))
+          .on('postgres_changes', { event:'*', schema:'public', table:'essayages', filter:`user_id=eq.${_userId}` }, payload => applyRealtimeChange(setEssayages, payload, row=>({cid:row.cliente_id, rid:row.robe_id})))
+          .subscribe();
+        if (cancelled && channel) channel.unsubscribe();
+      } catch(e) { console.error('Erreur connexion Realtime:', e); }
+    })();
+    return () => { cancelled = true; if (channel) channel.unsubscribe(); };
   },[user]);
 
   const TABS = [
@@ -1897,8 +2284,11 @@ export default function App() {
 
   const [signingOut, setSigningOut] = useState(false);
 
+  if (payerEmail) return <PayerRedirectScreen email={payerEmail} />;
+  if (recoveryToken) return <ResetPasswordScreen token={recoveryToken} onDone={() => setRecoveryToken(null)} />;
   if (!authChecked) return null;
-  if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} />;
+  if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} initialPaymentEmail={pendingPaymentEmail} />;
+  if (loading) return <AppLoadingScreen step={loadingStep} />;
   const handleSignOut = async () => {
     if (!window.confirm("Se déconnecter de Plan Me ?")) return;
     setSigningOut(true);
@@ -1941,14 +2331,7 @@ export default function App() {
         </div>
       </div>
 
-      {loading && (
-        <div style={{ padding:40, textAlign:"center", color:T.gris, fontSize:14, fontWeight:700 }}>
-          Chargement...
-        </div>
-      )}
-
-      {!loading && (
-        <div className="tab-content" key={tab} style={{ paddingTop:16 }}>
+      <div className="tab-content" key={tab} style={{ paddingTop:16 }}>
           {tab==="catalogue" && <>
             {!seenTabs.catalogue && <OnboardingBubble tab="catalogue" onDismiss={()=>dismissOnboarding("catalogue")}/>}
             <Catalogue robes={robes} setRobes={setRobes} toast={showToast}/>
@@ -1971,8 +2354,7 @@ export default function App() {
             <Stats reservations={reservations} robes={robes}/>
           </>}
           {tab==="admin" && <AdminPanel/>}
-        </div>
-      )}
+      </div>
 
       {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
 
