@@ -263,6 +263,28 @@ const injectStyles = () => {
       .modal-overlay { align-items:center; padding:24px; }
       .modal-sheet { max-height:88vh; border-radius:24px; }
     }
+
+    /* Catalogue : photos compactes sur tablette et ordinateur */
+    .catalogue-photo { display:block; width:100%; object-fit:cover; }
+    @media (min-width:768px) {
+      .catalogue-grid {
+        grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+        gap:14px !important;
+      }
+      .catalogue-photo {
+        aspect-ratio:4 / 5 !important;
+        max-height:240px;
+      }
+    }
+    @media (min-width:1100px) {
+      .catalogue-grid {
+        grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+      }
+      .catalogue-photo {
+        max-height:220px;
+      }
+    }
+
     @media print {
       body * { visibility:hidden !important; }
       .print-only, .print-only * { visibility:visible !important; }
@@ -1023,7 +1045,7 @@ function Catalogue({ robes, setRobes, toast }) {
           <div key={r.id} onClick={() => setDetail(r)} className="robe-card card-anim" style={{ background:T.blanc, borderRadius:14, overflow:"hidden", cursor:"pointer", boxShadow:"0 1px 3px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.05)", animationDelay:`${Math.min(i*40,320)}ms` }}>
             <div style={{ aspectRatio:"1", position:"relative", overflow:"hidden", background:`linear-gradient(135deg,${r.shade||T.vert}33,${r.shade||T.vert}66)`, display:"flex", alignItems:"center", justifyContent:"center" }}>
               {r.photo_url
-                ? <img src={r.photo_url} alt={r.nom} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
+                ? <img src={r.photo_url} alt={r.nom} className="catalogue-photo" style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
                 : <Avatar color={r.shade} nom={r.nom} size={44} />
               }
               <div style={{ position:"absolute", bottom:8, left:8, background:T.rose, borderRadius:100, padding:"3px 10px", fontSize:11, fontWeight:800, color:"#fff", boxShadow:"0 2px 8px rgba(0,0,0,.15)" }}>{r.prix}€</div>
@@ -1069,7 +1091,7 @@ function Catalogue({ robes, setRobes, toast }) {
           <label style={{ display:"block", border:`2px dashed ${T.vertM}`, borderRadius:10, padding:"16px", textAlign:"center", background:T.fond, cursor:"pointer" }}>
             <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePhoto} />
             {form.photoPreview
-              ? <img src={form.photoPreview} alt="preview" style={{ width:"100%", height:130, objectFit:"cover", borderRadius:8 }} />
+              ? <img src={form.photoPreview} alt="preview" className="catalogue-photo" style={{ width:"100%", height:130, objectFit:"cover", borderRadius:8 }} />
               : <><div style={{ fontSize:24 }}>📷</div><div style={{ fontSize:12, fontWeight:700, color:T.vert, marginTop:6 }}>Appuyer pour choisir une photo</div></>
             }
           </label>
@@ -1085,7 +1107,7 @@ function Catalogue({ robes, setRobes, toast }) {
           <>
             <div style={{ height:180, borderRadius:10, overflow:"hidden", background:`linear-gradient(135deg,${detail.shade||T.vert}22,${detail.shade||T.vert}55)`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:14 }}>
               {detail.photo_url
-                ? <img src={detail.photo_url} alt={detail.nom} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                ? <img src={detail.photo_url} alt={detail.nom} className="catalogue-photo" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                 : <div style={{ textAlign:"center" }}><div style={{ fontSize:36 }}>📷</div><div style={{ fontSize:12, fontWeight:700, color:detail.shade||T.vert, marginTop:6 }}>Photo de la pièce</div></div>
               }
             </div>
