@@ -2050,19 +2050,27 @@ function AdminPanel() {
                 {u.paid?"✓ Payé":"Non payé"}
               </span>
               <span style={{ background:T.vertL, color:T.vert, fontSize:10, fontWeight:800, padding:"3px 8px", borderRadius:100 }}>
-                {u.plan} {u.prix>0?`${u.prix}€`:""}
+                {u.plan === "admin"
+  ? "Admin"
+  : u.paid
+    ? "Abonnement 39,90€"
+    : "Abonnement"}
               </span>
             </div>
           </div>
           <div style={{ fontSize:11, color:T.gris, marginBottom:8 }}>{u.note}</div>
           {!u.paid && u.plan!=="admin" && (
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-              <button onClick={()=>setPaid(u.email,"fondateur",79)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
-                💚 Fondateur 79€
-              </button>
-              <button onClick={()=>setPaid(u.email,"standard",99)} style={{ padding:"8px", borderRadius:8, background:T.vertL, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", color:T.vert, fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
-                ✓ Standard 99€
-              </button>
+            <div style={{
+              background:T.roseL,
+              border:`1px solid ${T.rose}33`,
+              borderRadius:8,
+              padding:"9px 12px",
+              marginBottom:8,
+              fontSize:11,
+              fontWeight:700,
+              color:T.encre
+            }}>
+              💳 En attente de paiement · 29,90€/mois pendant 3 mois, puis 39,90€/mois
             </div>
           )}
           {u.plan !== "admin" && (
