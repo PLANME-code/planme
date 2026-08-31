@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, ChevronLeft, ChevronRight, Clock, TrendingUp, AlertCircle, Settings, LogOut, Edit3, Trash2 } from "lucide-react";
+import { Search, Plus, X, Check, Calendar, BarChart3, Package, Sparkles, ChevronLeft, ChevronRight, Clock, TrendingUp, AlertCircle, Settings, LogOut, Edit3, Trash2, Home, Printer, UserRound, CreditCard, KeyRound, ExternalLink } from "lucide-react";
 
 const SUPABASE_URL = "https://drgiyafkcmfydkabctxa.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZ2l5YWZrY21meWRrYWJjdHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzNTA5MDAsImV4cCI6MjEwMTkyNjkwMH0.Ak3tEWz5PL9DRhGKOswtqujW7dHM3-x79hd8ItteIQo";
@@ -232,6 +232,32 @@ const injectStyles = () => {
     .pop-check { animation: popCheck .45s cubic-bezier(.34,1.56,.64,1) both; }
     @keyframes heartBurst { 0% { transform:scale(0.5); opacity:0; } 30% { transform:scale(1.3); opacity:1; } 60% { transform:scale(0.95); } 100% { transform:scale(1); opacity:1; } }
     .heart-burst { animation: heartBurst .5s cubic-bezier(.34,1.56,.64,1) both; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:#FDF8FA; overscroll-behavior-y:none; }
+    button, input, select, textarea { -webkit-tap-highlight-color:transparent; }
+    button { touch-action:manipulation; }
+    .app-shell { width:100%; max-width:430px; margin:0 auto; }
+    .bottom-nav { width:100%; max-width:430px; }
+    .main-content { width:100%; }
+    .mobile-action { min-height:44px; }
+    .icon-btn { min-width:42px; min-height:42px; }
+    @media (max-width:600px) {
+      input, select, textarea { font-size:16px !important; }
+      .main-content { padding-bottom:calc(92px + env(safe-area-inset-bottom)); }
+      .bottom-nav { padding-bottom:env(safe-area-inset-bottom); }
+      .bottom-nav button { min-height:62px; }
+    }
+    @media (min-width:768px) {
+      .app-shell, .bottom-nav { max-width:760px; }
+      .main-content { padding-left:12px; padding-right:12px; }
+    }
+    @media (min-width:1100px) {
+      .app-shell, .bottom-nav { max-width:920px; }
+      .main-content { padding-left:24px; padding-right:24px; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+    }
   `;
   document.head.appendChild(s);
 };
@@ -1065,12 +1091,12 @@ function CalGrid({ cells, selected, onSelect, eventsByDay={} }) {
   );
 }
 
-function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toast }) {
+function Essayages({ essayages, setEssayages, robes, clientes, setClientes, reservations, toast }) {
   const [mois, setMois] = useState(new Date());
   const [sel, setSel] = useState(TODAY);
   const [modal, setModal] = useState(false);
   const [editEssId, setEditEssId] = useState(null);
-  const [form, setForm] = useState({ nom:"", tel:"", rid:"", heure:"10:00", note:"" });
+  const [form, setForm] = useState({ nom:"", tel:"", rid:"", heure:"10:00", note:"", modeCliente:"existante" });
 
   const cells = buildCal(mois, essayages.map(e => ({ date:e.date, debut:e.date, fin:e.date })));
   const dayEss = essayages.filter(e => e.date===sel);
@@ -1104,7 +1130,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
     }
     setModal(false);
     setEditEssId(null);
-    setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" });
+    setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"", modeCliente:"existante" });
   };
 
   return (
@@ -1140,7 +1166,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
                   <span style={{ background:e.date<TODAY?T.vertL:T.orL, color:e.date<TODAY?T.gris:T.or, fontSize:10, fontWeight:700, padding:"3px 9px", borderRadius:100 }}>{e.date<TODAY?"Passé":"À venir"}</span>
                 </div>
                 <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"6px 11px", borderRadius:7, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
+                  <button onClick={()=>{ setForm({ nom:cl?.nom||"", tel:cl?.tel||"", rid:e.rid, heure:e.heure, note:e.note||"", modeCliente:"existante" }); setEditEssId(e.id); setModal(true); }} style={{ padding:"6px 11px", borderRadius:7, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
                     <Edit3 size={12}/> Modifier
                   </button>
                   <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("Essayage supprimé"); }} style={{ padding:"6px 11px", borderRadius:7, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
@@ -1154,7 +1180,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, toas
       <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
         <Plus size={24}/>
       </button>
-      <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
+      <Modal open={modal} onClose={() => { setModal(false); setEditEssId(null); setForm({ nom:"", tel:"", rid:"", heure:"10:00", note:"", modeCliente:"existante" }); }} title={editEssId?"Modifier l'essayage":`Essayage — ${new Date(sel).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}`}>
         {/* Toggle nouvelle / existante */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, background:T.fond, borderRadius:10, padding:4, marginBottom:14 }}>
           {[["existante","👥 Cliente existante"],["nouvelle","✨ Nouvelle cliente"]].map(([m,l])=>(
@@ -1246,6 +1272,38 @@ function Planning({ reservations, robes, clientes }) {
   const cells = buildCal(mois, reservations.map(r => ({ debut:r.debut, fin:r.fin })));
   const dayRes = reservations.filter(r => r.debut<=sel && r.fin>=sel);
 
+  const printPlanning = () => {
+    const monthKey = `${mois.getFullYear()}-${String(mois.getMonth()+1).padStart(2,"0")}`;
+    const rows = reservations
+      .filter(r => r.debut?.startsWith(monthKey))
+      .sort((a,b) => String(a.debut).localeCompare(String(b.debut)))
+      .map(r => {
+        const robe = robes.find(x=>x.id===r.rid);
+        const cl = clientes.find(x=>x.id===r.cid);
+        const debut = new Date(r.debut).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
+        const fin = new Date(r.fin).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"});
+        return `<tr><td>${debut}${r.fin!==r.debut?` → ${fin}`:""}</td><td>${cl?.nom||"—"}</td><td>${robe?.nom||"—"}</td><td>${r.prix||0}€</td></tr>`;
+      }).join("");
+
+    const w = window.open("", "_blank", "width=900,height=720");
+    if (!w) return;
+    const monthLabel = mois.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+    w.document.write(`<!doctype html><html><head><title>Planning Plan Me</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:30px;color:#211F1A}
+        h1{font-size:24px;margin:0 0 4px} p{color:#777;margin:0 0 24px;text-transform:capitalize}
+        table{width:100%;border-collapse:collapse} th,td{padding:11px 10px;border-bottom:1px solid #eee;text-align:left;font-size:13px}
+        th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#777}
+      </style></head><body>
+      <h1>Plan Me — Planning des réservations</h1><p>${monthLabel}</p>
+      <table><thead><tr><th>Dates</th><th>Cliente</th><th>Pièce</th><th>Prix</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4">Aucune réservation ce mois.</td></tr>'}</tbody></table>
+      </body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>w.print(), 250);
+  };
+
   return (
     <div style={{ padding:"0 16px" }}>
       <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, padding:14, marginBottom:12, boxShadow:"0 2px 10px rgba(31,58,46,.07)" }}>
@@ -1265,8 +1323,14 @@ function Planning({ reservations, robes, clientes }) {
         return m;
       },[reservations,clientes,robes])}/>
       </div>
-      <div style={{ background:T.vertL, border:`1.5px solid ${T.vert}33`, borderRadius:10, padding:"10px 14px", marginBottom:12, fontSize:12, color:T.vert, fontWeight:700 }}>
-        📅 Planning des réservations · distinct du planning essayages
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, marginBottom:12 }}>
+        <div style={{ background:T.vertL, border:`1.5px solid ${T.vert}33`, borderRadius:10, padding:"10px 14px", fontSize:12, color:T.vert, fontWeight:700, flex:1 }}>
+          📅 Planning des réservations
+        </div>
+        <button className="icon-btn" onClick={printPlanning} title="Imprimer le planning" aria-label="Imprimer le planning"
+          style={{ width:42, height:42, flexShrink:0, borderRadius:10, background:T.blanc, border:`1px solid ${T.vertM}`, boxShadow:"0 2px 8px rgba(31,58,46,.07)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <Printer size={18} color={T.encre}/>
+        </button>
       </div>
       <div style={{ fontWeight:800, fontSize:13, color:T.encre, marginBottom:10, textTransform:"capitalize" }}>
         {new Date(sel).toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}
@@ -1285,9 +1349,11 @@ function Planning({ reservations, robes, clientes }) {
                   </div>
                   <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>Confirmée</span>
                 </div>
-                <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:8, padding:"9px 12px", fontSize:11, color:"#8B3020", fontWeight:600 }}>
-                  🚫 {robe?.nom} grisée du {new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} au {new Date(r.fin).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})} — double réservation impossible
-                </div>
+                {r.note && (
+                  <div style={{ background:"#FFF0EC", border:"1.5px solid #F5C0B0", borderRadius:8, padding:"9px 12px", fontSize:11, color:"#C44736", fontWeight:700 }}>
+                    {r.note}
+                  </div>
+                )}
               </div>
             );
           })
@@ -1411,6 +1477,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
                 } <div style={{ flex:1 }}>
                   <div style={{ fontWeight:800, fontSize:14, color:T.encre }}>{cl?.nom}</div>
                   <div style={{ fontSize:12, color:T.gris }}>{robe?.nom}</div>
+                  {r.note && <div style={{ fontSize:11, color:"#C44736", fontWeight:700, marginTop:3, lineHeight:1.35 }}>{r.note}</div>}
                 </div>
                 <span style={{ background:(statCol[r.statut]||T.gris)+"1A", color:statCol[r.statut]||T.gris, border:`1px solid ${statCol[r.statut]||T.gris}33`, fontSize:10, fontWeight:800, padding:"3px 9px", borderRadius:100 }}>{statLbl[r.statut]||r.statut}</span>
               </div>
@@ -1616,100 +1683,137 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 // ── STATS ─────────────────────────────────────────────────────
 function Stats({ reservations, robes }) {
   const [moisDetail, setMoisDetail] = useState(null);
-  const caTotal = reservations.reduce((s,r)=>s+(r.prix||0),0);
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+
+  const caTotal = reservations.reduce((s,r)=>s+(+r.prix||0),0);
+  const resThisMonth = reservations.filter(r=>r.debut?.startsWith(currentMonth));
+  const caMois = resThisMonth.reduce((s,r)=>s+(+r.prix||0),0);
   const pm = reservations.length ? Math.round(caTotal/reservations.length) : 0;
-  const cautions = reservations.filter(r=>r.statut!=="terminee").reduce((s,r)=>s+(r.caution||0),0);
+  const cautions = reservations.filter(r=>r.statut!=="terminee").reduce((s,r)=>s+(+r.caution||0),0);
+  const resteAEncaisser = reservations
+    .filter(r=>r.statut!=="terminee")
+    .reduce((s,r)=>s+Math.max((+r.prix||0)-(+r.acompte||0),0),0);
+  const aVenir = reservations.filter(r => (r.fin||r.debut) >= TODAY && r.statut!=="terminee").length;
 
   const parMois = useMemo(() => {
     const m={};
-    reservations.forEach(r=>{ const k=r.debut?.slice(0,7); if(k) m[k]=(m[k]||0)+(r.prix||0); });
+    reservations.forEach(r=>{ const k=r.debut?.slice(0,7); if(k) m[k]=(m[k]||0)+(+r.prix||0); });
     return Object.entries(m).sort().slice(-6);
   },[reservations]);
   const maxCA = Math.max(...parMois.map(([,v])=>v),1);
 
   const parRobe = useMemo(() => {
     const m={};
-    reservations.forEach(r=>{ m[r.rid]=(m[r.rid]||0)+(r.prix||0); });
+    reservations.forEach(r=>{ m[r.rid]=(m[r.rid]||0)+(+r.prix||0); });
     return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,5);
   },[reservations]);
 
-  const MN={"2026-01":"Jan","2026-02":"Fév","2026-03":"Mar","2026-04":"Avr","2026-05":"Mai","2026-06":"Jun","2026-07":"Jul","2026-08":"Aoû","2026-09":"Sep","2026-10":"Oct","2026-11":"Nov","2026-12":"Déc"};
+  const moisCourt = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Aoû","Sep","Oct","Nov","Déc"];
+  const labelMois = k => {
+    const [y,m] = String(k).split("-");
+    const idx = Number(m)-1;
+    return Number.isFinite(idx) && idx>=0 && idx<12 ? moisCourt[idx] : k;
+  };
   const resDetail = moisDetail ? reservations.filter(r=>r.debut?.startsWith(moisDetail)) : [];
+
+  const kpis = [
+    { label:"CA total", value:`${caTotal.toLocaleString("fr-FR")}€`, sub:`${reservations.length} réservation${reservations.length>1?"s":""}`, tone:T.vert },
+    { label:"Ce mois", value:`${caMois.toLocaleString("fr-FR")}€`, sub:`${resThisMonth.length} réservation${resThisMonth.length>1?"s":""}`, tone:T.rose },
+    { label:"Reste à encaisser", value:`${resteAEncaisser.toLocaleString("fr-FR")}€`, sub:"sur les locations en cours", tone:"#C76C3A" },
+    { label:"À venir", value:String(aVenir), sub:"réservations futures", tone:T.or },
+  ];
 
   return (
     <div style={{ padding:"0 16px" }}>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
-        <div style={{ background:`linear-gradient(135deg,${T.vert}18,${T.vertL})`, border:`1px solid ${T.vert}33`, borderRadius:10, padding:14 }}>
-          <div style={{ fontSize:9, fontWeight:800, color:T.vert, letterSpacing:".1em", textTransform:"uppercase", marginBottom:6 }}>Chiffre d'affaires</div>
-          <div style={{ fontWeight:900, fontSize:26, color:T.vert }}>{caTotal.toLocaleString("fr-FR")}€</div>
-          <div style={{ fontSize:11, color:T.gris, marginTop:4 }}>{reservations.length} réservations</div>
+        {kpis.map(k => (
+          <div key={k.label} style={{ background:T.blanc, border:`1px solid ${T.vertM}`, borderRadius:14, padding:"14px 13px", boxShadow:"0 4px 16px rgba(31,58,46,.06)" }}>
+            <div style={{ fontSize:9, fontWeight:800, color:k.tone, letterSpacing:".08em", textTransform:"uppercase", marginBottom:6 }}>{k.label}</div>
+            <div style={{ fontWeight:900, fontSize:24, color:T.encre, letterSpacing:"-.03em" }}>{k.value}</div>
+            <div style={{ fontSize:10.5, color:T.gris, marginTop:4, lineHeight:1.35 }}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
+        <div style={{ background:T.roseL, borderRadius:12, padding:"11px 13px" }}>
+          <div style={{ fontSize:10, color:T.gris, fontWeight:700 }}>Panier moyen</div>
+          <div style={{ fontSize:18, color:T.rose, fontWeight:900, marginTop:2 }}>{pm}€</div>
         </div>
-        <div style={{ background:`linear-gradient(135deg,${T.rose}18,${T.roseL})`, border:`1px solid ${T.rose}33`, borderRadius:10, padding:14 }}>
-          <div style={{ fontSize:9, fontWeight:800, color:T.rose, letterSpacing:".1em", textTransform:"uppercase", marginBottom:6 }}>Panier moyen</div>
-          <div style={{ fontWeight:900, fontSize:26, color:T.rose }}>{pm}€</div>
-          <div style={{ fontSize:11, color:T.gris, marginTop:4 }}>par réservation</div>
+        <div style={{ background:T.orL, borderRadius:12, padding:"11px 13px" }}>
+          <div style={{ fontSize:10, color:T.gris, fontWeight:700 }}>Cautions en cours</div>
+          <div style={{ fontSize:18, color:T.or, fontWeight:900, marginTop:2 }}>{cautions.toLocaleString("fr-FR")}€</div>
         </div>
       </div>
-      <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:14, marginBottom:10 }}>
-        <div style={{ fontWeight:800, fontSize:14, color:T.encre, marginBottom:4 }}>CA par mois</div>
-        <div style={{ fontSize:11, color:T.gris, marginBottom:14 }}>Tap sur une barre pour le détail</div>
-        <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:90 }}>
-          {parMois.map(([k,v],i) => {
-            const isLast=i===parMois.length-1, isSel=k===moisDetail;
-            return (
-              <div key={k} onClick={()=>setMoisDetail(isSel?null:k)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4, height:"100%", justifyContent:"flex-end", cursor:"pointer" }}>
-                <div style={{ fontSize:8, fontWeight:700, color:isSel?T.vert:T.gris }}>{v>0?`${Math.round(v/100)/10}k`:""}</div>
-                <div style={{ width:"100%", borderRadius:"6px 6px 0 0", background:isSel?`linear-gradient(180deg,${T.rose},${T.rose}AA)`:isLast?`linear-gradient(180deg,${T.vert},${T.vert2})`:T.vertM, height:`${Math.max(Math.round((v/maxCA)*100),4)}%`, border:isSel?`1.5px solid ${T.rose}`:"none" }}/>
-                <div style={{ fontSize:9, fontWeight:700, color:isSel?T.rose:isLast?T.vert:T.gris }}>{MN[k]||k}</div>
-              </div>
-            );
-          })}
-        </div>
+
+      <div style={{ background:T.blanc, borderRadius:14, border:`1px solid ${T.vertM}`, boxShadow:"0 4px 16px rgba(31,58,46,.06)", padding:14, marginBottom:10 }}>
+        <div style={{ fontWeight:900, fontSize:14, color:T.encre, marginBottom:4 }}>Évolution du chiffre d'affaires</div>
+        <div style={{ fontSize:11, color:T.gris, marginBottom:14 }}>Appuie sur une barre pour voir le détail du mois</div>
+        {parMois.length===0 ? (
+          <div style={{ textAlign:"center", padding:"24px 8px", color:T.gris, fontSize:12 }}>Les statistiques apparaîtront dès ta première réservation.</div>
+        ) : (
+          <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:100 }}>
+            {parMois.map(([k,v],i) => {
+              const isLast=i===parMois.length-1, isSel=k===moisDetail;
+              return (
+                <button key={k} onClick={()=>setMoisDetail(isSel?null:k)}
+                  style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", alignItems:"center", gap:4, height:"100%", justifyContent:"flex-end", cursor:"pointer", background:"none", border:"none", padding:0, fontFamily:"inherit" }}>
+                  <div style={{ fontSize:8, fontWeight:800, color:isSel?T.rose:T.gris }}>{v>0?`${v.toLocaleString("fr-FR")}€`:""}</div>
+                  <div style={{ width:"100%", minHeight:5, borderRadius:"7px 7px 2px 2px", background:isSel?T.rose:isLast?T.vert:T.vertM, height:`${Math.max(Math.round((v/maxCA)*100),5)}%`, transition:"height .3s ease, background .2s" }}/>
+                  <div style={{ fontSize:9, fontWeight:800, color:isSel?T.rose:isLast?T.vert:T.gris }}>{labelMois(k)}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
+
       {moisDetail && resDetail.length>0 && (
-        <div style={{ background:T.blanc, border:`1.5px solid ${T.rose}`, borderRadius:10, padding:14, marginBottom:10 }}>
+        <div style={{ background:T.blanc, border:`1.5px solid ${T.rose}`, borderRadius:14, padding:14, marginBottom:10, boxShadow:"0 6px 18px rgba(232,105,159,.08)" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
             <div>
-              <div style={{ fontWeight:900, fontSize:14, color:T.encre }}>{MN[moisDetail]||moisDetail}</div>
-              <div style={{ fontSize:11, color:T.gris }}>{resDetail.length} réservations · {resDetail.reduce((s,r)=>s+(r.prix||0),0)}€</div>
+              <div style={{ fontWeight:900, fontSize:14, color:T.encre }}>{labelMois(moisDetail)}</div>
+              <div style={{ fontSize:11, color:T.gris }}>{resDetail.length} réservation{resDetail.length>1?"s":""} · {resDetail.reduce((s,r)=>s+(+r.prix||0),0).toLocaleString("fr-FR")}€</div>
             </div>
-            <button onClick={()=>setMoisDetail(null)} style={{ background:T.fond, border:"none", borderRadius:8, width:28, height:28, cursor:"pointer" }}><X size={14} color={T.gris}/></button>
+            <button className="icon-btn" onClick={()=>setMoisDetail(null)} style={{ background:T.fond, border:"none", borderRadius:9, width:36, height:36, cursor:"pointer" }}><X size={14} color={T.gris}/></button>
           </div>
           {resDetail.map(r => {
             const robe=robes.find(x=>x.id===r.rid);
             return (
-              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:`1px solid ${T.vertM}` }}>
+              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderBottom:`1px solid ${T.vertM}` }}>
                 {robe?.photo_url
-                  ? <img src={robe.photo_url} alt={robe.nom} style={{ width:32, height:32, borderRadius:10, objectFit:"cover", flexShrink:0 }}/>
-                  : <Avatar color={robe?.shade} nom={robe?.nom} size={32}/>
+                  ? <img src={robe.photo_url} alt={robe.nom} style={{ width:36, height:36, borderRadius:10, objectFit:"cover", flexShrink:0 }}/>
+                  : <Avatar color={robe?.shade} nom={robe?.nom} size={36}/>
                 }
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:T.encre }}>{robe?.nom}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:12, fontWeight:800, color:T.encre, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{robe?.nom}</div>
                   <div style={{ fontSize:11, color:T.gris }}>{new Date(r.debut).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</div>
                 </div>
                 <span style={{ fontSize:13, fontWeight:900, color:T.vert }}>{r.prix}€</span>
               </div>
             );
           })}
-          <div style={{ display:"flex", justifyContent:"space-between", fontWeight:900, fontSize:15, color:T.vert, marginTop:10, paddingTop:10, borderTop:`1.5px solid ${T.vertM}` }}>
-            <span>Total</span><span>{resDetail.reduce((s,r)=>s+(r.prix||0),0)}€</span>
-          </div>
         </div>
       )}
-      <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:14 }}>
-        <div style={{ fontWeight:800, fontSize:14, color:T.encre, marginBottom:12 }}>Top pièces</div>
-        {parRobe.map(([rid,ca],i) => {
+
+      <div style={{ background:T.blanc, borderRadius:14, border:`1px solid ${T.vertM}`, boxShadow:"0 4px 16px rgba(31,58,46,.06)", padding:14 }}>
+        <div style={{ fontWeight:900, fontSize:14, color:T.encre, marginBottom:12 }}>Pièces les plus rentables</div>
+        {parRobe.length===0 ? (
+          <div style={{ color:T.gris, fontSize:12, padding:"12px 0" }}>Pas encore assez de données.</div>
+        ) : parRobe.map(([rid,ca],i) => {
           const r=robes.find(x=>x.id===rid);
+          const max = parRobe[0]?.[1] || 1;
           return (
-            <div key={rid} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-              <div style={{ width:24, height:24, borderRadius:"50%", background:i===0?T.rose:T.vertL, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:i===0?"#fff":T.vert }}>{i+1}</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:12, fontWeight:800, color:T.encre }}>{r?.nom||rid}</div>
-                <div style={{ height:4, background:T.vertL, borderRadius:100, marginTop:4, overflow:"hidden" }}>
-                  <div style={{ height:"100%", width:`${Math.round((ca/parRobe[0][1])*100)}%`, background:`linear-gradient(90deg,${T.vert},${T.vertM})`, borderRadius:100 }}/>
+            <div key={rid} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+              <div style={{ width:28, height:28, borderRadius:9, background:i===0?T.rose:T.vertL, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:i===0?"#fff":T.vert }}>{i+1}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, fontWeight:800, color:T.encre, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r?.nom||rid}</div>
+                <div style={{ height:5, background:T.vertL, borderRadius:100, marginTop:5, overflow:"hidden" }}>
+                  <div style={{ height:"100%", width:`${Math.round((ca/max)*100)}%`, background:T.vert, borderRadius:100 }}/>
                 </div>
               </div>
-              <span style={{ fontSize:13, fontWeight:900, color:T.vert }}>{ca}€</span>
+              <span style={{ fontSize:13, fontWeight:900, color:T.vert }}>{ca.toLocaleString("fr-FR")}€</span>
             </div>
           );
         })}
@@ -1891,6 +1995,85 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
           );
         })()}
       </Modal>
+    </div>
+  );
+}
+
+// ── ESPACE COMPTE CLIENTE ────────────────────────────────────
+function AccountPanel({ user, onClose, onSignOut }) {
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+
+  const sendPasswordReset = async () => {
+    setBusy("password"); setMessage("");
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method:"POST",
+        headers:{ apikey:SUPABASE_KEY, "Content-Type":"application/json" },
+        body:JSON.stringify({ email:user.email })
+      });
+      if (!res.ok) throw new Error("Impossible d'envoyer l'email.");
+      setMessage("📧 Email de changement de mot de passe envoyé.");
+    } catch(e) {
+      setMessage("❌ " + (e.message || "Une erreur est survenue."));
+    } finally { setBusy(""); }
+  };
+
+  const openBilling = async () => {
+    setBusy("billing"); setMessage("");
+    try {
+      const res = await fetch("/api/create-portal-session", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ email:user.email })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Espace abonnement indisponible.");
+      window.location.href = data.url;
+    } catch(e) {
+      setMessage("❌ " + (e.message || "Espace abonnement indisponible."));
+      setBusy("");
+    }
+  };
+
+  return (
+    <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{ position:"fixed", inset:0, background:"rgba(33,31,26,.28)", backdropFilter:"blur(4px)", zIndex:700, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+      <div className="modal-enter" style={{ width:"100%", maxWidth:520, background:T.blanc, borderRadius:"24px 24px 0 0", padding:"16px 18px calc(24px + env(safe-area-inset-bottom))", boxShadow:"0 -18px 50px rgba(0,0,0,.16)" }}>
+        <div style={{ width:38, height:4, borderRadius:100, background:T.vertM, margin:"0 auto 16px" }}/>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+          <div style={{ width:46, height:46, borderRadius:14, background:T.roseL, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <UserRound size={22} color={T.rose}/>
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontWeight:900, fontSize:18, color:T.encre }}>Mon compte</div>
+            <div style={{ fontSize:11.5, color:T.gris, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email}</div>
+          </div>
+          <button className="icon-btn" onClick={onClose} style={{ width:42, height:42, borderRadius:12, background:T.fond, border:"none", cursor:"pointer" }}><X size={17} color={T.gris}/></button>
+        </div>
+
+        <div style={{ background:T.vertL, border:`1px solid ${T.vertM}`, borderRadius:14, padding:"12px 14px", marginBottom:12 }}>
+          <div style={{ fontSize:10, fontWeight:800, color:T.vert, textTransform:"uppercase", letterSpacing:".08em" }}>Abonnement Plan Me</div>
+          <div style={{ fontSize:14, fontWeight:900, color:T.encre, marginTop:3 }}>39,90€/mois</div>
+          <div style={{ fontSize:11, color:T.gris, marginTop:2 }}>Gestion sécurisée via Stripe</div>
+        </div>
+
+        <button className="mobile-action" onClick={openBilling} disabled={busy==="billing"} style={{ width:"100%", minHeight:50, borderRadius:13, border:`1px solid ${T.vertM}`, background:T.blanc, display:"flex", alignItems:"center", gap:12, padding:"0 14px", cursor:"pointer", fontFamily:"inherit", marginBottom:9 }}>
+          <CreditCard size={19} color={T.rose}/>
+          <span style={{ flex:1, textAlign:"left", fontWeight:800, color:T.encre }}>Gérer mon abonnement</span>
+          <ExternalLink size={15} color={T.gris}/>
+        </button>
+
+        <button className="mobile-action" onClick={sendPasswordReset} disabled={busy==="password"} style={{ width:"100%", minHeight:50, borderRadius:13, border:`1px solid ${T.vertM}`, background:T.blanc, display:"flex", alignItems:"center", gap:12, padding:"0 14px", cursor:"pointer", fontFamily:"inherit", marginBottom:9 }}>
+          <KeyRound size={19} color={T.vert}/>
+          <span style={{ flex:1, textAlign:"left", fontWeight:800, color:T.encre }}>{busy==="password"?"Envoi...":"Modifier mon mot de passe"}</span>
+        </button>
+
+        {message && <div style={{ padding:"10px 12px", borderRadius:10, background:T.fond, fontSize:11.5, fontWeight:700, color:T.encre, margin:"4px 0 10px" }}>{message}</div>}
+
+        <button className="mobile-action" onClick={onSignOut} style={{ width:"100%", minHeight:50, borderRadius:13, border:"none", background:"#FFF0EC", color:"#C44736", fontWeight:900, cursor:"pointer", fontFamily:"inherit" }}>
+          Se déconnecter
+        </button>
+      </div>
     </div>
   );
 }
@@ -2291,6 +2474,8 @@ export default function App() {
   const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", clientes:"Clientes", stats:"Statistiques" };
 
   const [signingOut, setSigningOut] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const isFounder = user?.email === "nafissa.tizaoui@hotmail.com";
 
   if (payerEmail) return <PayerRedirectScreen email={payerEmail} />;
   if (recoveryToken) return <ResetPasswordScreen token={recoveryToken} onDone={() => setRecoveryToken(null)} />;
@@ -2309,7 +2494,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily:"'Manrope',sans-serif", background:T.blanc, minHeight:"100vh", maxWidth:430, margin:"0 auto", position:"relative", paddingBottom:80 }}>
+    <div className="app-shell" style={{ fontFamily:"'Manrope',sans-serif", background:T.blanc, minHeight:"100vh", position:"relative", paddingBottom:80, boxShadow:"0 0 40px rgba(31,58,46,.04)" }}>
       <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
       {signingOut && (
         <div style={{ position:"fixed", inset:0, background:T.roseL, zIndex:9999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", animation:"fadeIn .4s ease both" }}>
@@ -2328,25 +2513,29 @@ export default function App() {
           <div style={{ borderLeft:`1px solid ${T.vertM}`, paddingLeft:12, marginRight:2 }}>
             <span style={{ fontSize:10, fontWeight:700, color:T.gris, letterSpacing:".1em", textTransform:"uppercase" }}>{titles[tab]}</span>
           </div>
-          {user?.email==="nafissa.tizaoui@hotmail.com" && (
-            <button onClick={()=>setTab("admin")} title="Admin" style={{ width:34, height:34, borderRadius:8, background:tab==="admin"?T.vert:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <Settings size={15} color={tab==="admin"?"#fff":T.encre}/>
+          {isFounder ? (
+            <button className="icon-btn" onClick={()=>setTab("admin")} title="Administration" style={{ width:42, height:42, borderRadius:12, background:tab==="admin"?T.vert:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <Settings size={17} color={tab==="admin"?"#fff":T.encre}/>
+            </button>
+          ) : (
+            <button className="icon-btn" onClick={()=>setAccountOpen(true)} title="Mon compte" aria-label="Mon compte" style={{ width:42, height:42, borderRadius:12, background:T.roseL, border:`1px solid ${T.rose}22`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <Home size={18} color={T.rose}/>
             </button>
           )}
-          <button onClick={handleSignOut} title="Se déconnecter" style={{ width:34, height:34, borderRadius:8, background:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <button className="icon-btn" onClick={handleSignOut} title="Se déconnecter" style={{ width:42, height:42, borderRadius:12, background:T.fond, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
             <LogOut size={15} color={T.encre}/>
           </button>
         </div>
       </div>
 
-      <div className="tab-content" key={tab} style={{ paddingTop:16 }}>
+      <div className="tab-content main-content" key={tab} style={{ paddingTop:16 }}>
           {tab==="catalogue" && <>
             {!seenTabs.catalogue && <OnboardingBubble tab="catalogue" onDismiss={()=>dismissOnboarding("catalogue")}/>}
             <Catalogue robes={robes} setRobes={setRobes} toast={showToast}/>
           </>}
           {tab==="essayages" && <>
             {!seenTabs.essayages && <OnboardingBubble tab="essayages" onDismiss={()=>dismissOnboarding("essayages")}/>}
-            <Essayages essayages={essayages} setEssayages={setEssayages} robes={robes} clientes={clientes} setClientes={setClientes} toast={showToast}/>
+            <Essayages essayages={essayages} setEssayages={setEssayages} robes={robes} clientes={clientes} setClientes={setClientes} reservations={reservations} toast={showToast}/>
           </>}
           {tab==="planning" && <>
             {!seenTabs.planning && <OnboardingBubble tab="planning" onDismiss={()=>dismissOnboarding("planning")}/>}
@@ -2364,12 +2553,12 @@ export default function App() {
           {tab==="admin" && <AdminPanel/>}
       </div>
 
-      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
+      {accountOpen && <AccountPanel user={user} onClose={()=>setAccountOpen(false)} onSignOut={()=>{ setAccountOpen(false); handleSignOut(); }}/>}\n\n      {toast && <Toast key={toast.key} msg={toast.msg} type={toast.type} onDone={() => setToast(null)}/>}
 
       {/* Tab bar */}
-      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:T.blanc, borderTop:`1px solid ${T.vertM}`, display:"flex", zIndex:200 }}>
+      <div className="bottom-nav" style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", background:"rgba(255,255,255,.96)", backdropFilter:"blur(14px)", borderTop:`1px solid ${T.vertM}`, display:"flex", zIndex:200, boxShadow:"0 -8px 24px rgba(31,58,46,.05)" }}>
         {TABS.map(({ id, label, Icon }) => (
-          <button key={id} onClick={() => setTab(id)} style={{ flex:1, padding:"10px 4px 14px", display:"flex", flexDirection:"column", alignItems:"center", gap:4, background:"none", border:"none", cursor:"pointer", color:tab===id?T.rose:T.gris, fontFamily:"inherit", position:"relative", transition:"color .2s" }}>
+          <button key={id} onClick={() => setTab(id)} style={{ flex:1, minWidth:0, minHeight:62, padding:"10px 3px 12px", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, background:"none", border:"none", cursor:"pointer", color:tab===id?T.rose:T.gris, fontFamily:"inherit", position:"relative", transition:"color .2s, transform .15s" }}>
             {tab===id && <div style={{ position:"absolute", top:0, left:"28%", right:"28%", height:3, borderRadius:"0 0 3px 3px", background:T.rose, animation:"popCheck .3s cubic-bezier(.34,1.56,.64,1) both" }}/>}
             <Icon size={18} strokeWidth={tab===id?2.4:1.8} style={{ transition:"transform .2s cubic-bezier(.34,1.56,.64,1)", transform:tab===id?"scale(1.12)":"scale(1)" }}/>
             <span style={{ fontSize:9.5, fontWeight:tab===id?800:600, letterSpacing:".02em" }}>{label}</span>
