@@ -2234,7 +2234,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const [filtreStatut, setFiltreStatut] = useState("confirmees");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
-  const [form, setForm] = useState({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
+  const [form, setForm] = useState({ nom:"", tel:"", rid:"", robeQuery:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", paiement:"" });
   const [showSuggest, setShowSuggest] = useState(false);
   const [formError, setFormError] = useState("");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -2242,6 +2242,10 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
   const suggestions = form.nom.trim().length>0
     ? clientes.filter(c => c.nom.toLowerCase().includes(form.nom.trim().toLowerCase())).slice(0,6)
     : [];
+
+  const robesFiltered = form.robeQuery.trim()
+    ? robes.filter(r => r.nom?.toLowerCase().includes(form.robeQuery.trim().toLowerCase()))
+    : robes;
 
   const filtered = reservations.filter(r => {
     const cl = clientes.find(x=>x.id===r.cid);
@@ -2317,7 +2321,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
 
       setModal(false);
       setEditResaId(null);
-      setForm({ nom:"", tel:"", rid:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
+      setForm({ nom:"", tel:"", rid:"", robeQuery:"", debut:"", fin:"", prix:"", caution:"", acompte:"", note:"", prixExc:"", modeCliente:"existante" });
 
     } catch(e) {
       console.error('Erreur réservation:', e);
@@ -2618,7 +2622,7 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
               <button onClick={()=>{
                 setDetail(null);
                 setModal(true);
-                setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:cleanReservationNote(detail.r.note), paiement:detail.r.moyen_paiement||"", prixExc:"" });
+                setForm({ nom:detail.cl?.nom||"", tel:detail.cl?.tel||"", rid:detail.r.rid, robeQuery:detail.robe?.nom||"", debut:detail.r.debut, fin:detail.r.fin, prix:detail.r.prix?.toString()||"", caution:detail.r.caution?.toString()||"", acompte:detail.r.acompte?.toString()||"", note:cleanReservationNote(detail.r.note), paiement:detail.r.moyen_paiement||"", prixExc:"" });
                 setEditResaId(detail.r.id);
               }} style={{ padding:"12px", borderRadius:9, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", justifyContent:"center", gap:7 }}>
                 <Edit3 size={14}/> Modifier
@@ -2676,8 +2680,20 @@ function Reservations({ reservations, setReservations, robes, clientes, setClien
           </div>
         </Field>
         <Field label="Pièce choisie">
+          <div style={{ position:"relative", marginBottom:8 }}>
+            <Search size={14} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)", color:T.gris, pointerEvents:"none" }} />
+            <input
+              value={form.robeQuery}
+              onChange={e=>setForm(p=>({...p,robeQuery:e.target.value}))}
+              placeholder="Rechercher une pièce..."
+              style={{ ...inputStyle, padding:"8px 12px 8px 32px", fontSize:13, borderRadius:100 }}
+            />
+          </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:200, overflowY:"auto" }}>
-            {robes.map(r => (
+            {robesFiltered.length === 0 && (
+              <div style={{ fontSize:12, color:T.gris, textAlign:"center", padding:"12px 0" }}>Aucune pièce ne correspond à "{form.robeQuery}"</div>
+            )}
+            {robesFiltered.map(r => (
               <div key={r.id} onClick={()=>setForm(p=>({...p,rid:r.id,prix:r.prix?.toString()||"",caution:r.caution?.toString()||""}))} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 12px", borderRadius:8, border:form.rid===r.id?`2px solid ${T.vert}`:`1.5px solid ${T.vertM}88`, background:form.rid===r.id?T.vertL:T.blanc, cursor:"pointer" }}>
                 {r.photo_url
                   ? <img src={r.photo_url} alt={r.nom} style={{width:34,height:34,borderRadius:8,objectFit:"cover",flexShrink:0}}/>
@@ -3560,7 +3576,6 @@ export default function App() {
   const [user, setUser] = useState(null); // null = non connecté
   const [authChecked, setAuthChecked] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
-  const [todayShownForUser, setTodayShownForUser] = useState(null);
 
   const showToast = (msg, type="success") => setToast({ msg, type, key:Date.now() });
 
@@ -3759,13 +3774,20 @@ export default function App() {
 
   const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", clientes:"Clientes", stats:"Statistiques" };
 
+  // La fenêtre "Aujourd'hui" ne doit s'ouvrir qu'une seule fois par connexion —
+  // pas à chaque rafraîchissement de page tant que la session reste active.
+  // sessionStorage survit aux rechargements (F5) mais se vide à la fermeture
+  // de l'onglet/navigateur, contrairement à un simple state React qui, lui,
+  // repart de zéro à chaque remontage de l'app.
   useEffect(() => {
     if (!user || loading) return;
     const key = user.id || user.email;
-    if (todayShownForUser === key) return;
-    setTodayShownForUser(key);
+    let already = false;
+    try { already = sessionStorage.getItem('planme_today_shown') === key; } catch(e) {}
+    if (already) return;
+    try { sessionStorage.setItem('planme_today_shown', key); } catch(e) {}
     setTodayOpen(true);
-  }, [user, loading, todayShownForUser]);
+  }, [user, loading]);
 
   const [signingOut, setSigningOut] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -3870,6 +3892,7 @@ export default function App() {
     setTimeout(async () => {
       await auth.signOut();
       try { localStorage.removeItem("planme_last_activity"); } catch(e) {}
+      try { sessionStorage.removeItem("planme_today_shown"); } catch(e) {}
       setUser(null);
       setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
       setSigningOut(false);
