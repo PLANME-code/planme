@@ -1660,7 +1660,7 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
   });
 
   const cells = buildCal(mois, essayages.map(e => ({ date:e.date, debut:e.date, fin:e.date })));
-  const dayEss = essayages.filter(e => e.date===sel);
+  const dayEss = essayages.filter(e => e.date===sel).sort((a,b)=>String(a.heure||"").localeCompare(String(b.heure||"")));
 
   const save = async () => {
     if (!form.nom.trim() || !form.heure) return;
@@ -3576,6 +3576,7 @@ export default function App() {
   const [user, setUser] = useState(null); // null = non connecté
   const [authChecked, setAuthChecked] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
+  const [freshLogin, setFreshLogin] = useState(false);
 
   const showToast = (msg, type="success") => setToast({ msg, type, key:Date.now() });
 
@@ -3646,6 +3647,7 @@ export default function App() {
               _token = token;
               _userId = uid;
               try { localStorage.setItem('planme_session', JSON.stringify({ token, userId:uid, email })); } catch(e) {}
+              setFreshLogin(true);
               setUser({ token, userId:uid, email });
             }
             setAuthChecked(true);
@@ -3654,7 +3656,7 @@ export default function App() {
         }
       }
       const session = auth.getSession();
-      if (session) setUser(session);
+      if (session) setUser(session); // restauration de session existante — pas une "vraie" connexion
       setAuthChecked(true);
     })();
   }, []);
@@ -3774,20 +3776,18 @@ export default function App() {
 
   const titles = { catalogue:"Catalogue", essayages:"Essayages", planning:"Planning", resa:"Réservations", clientes:"Clientes", stats:"Statistiques" };
 
-  // La fenêtre "Aujourd'hui" ne doit s'ouvrir qu'une seule fois par connexion —
-  // pas à chaque rafraîchissement de page tant que la session reste active.
-  // sessionStorage survit aux rechargements (F5) mais se vide à la fermeture
-  // de l'onglet/navigateur, contrairement à un simple state React qui, lui,
-  // repart de zéro à chaque remontage de l'app.
+  // La fenêtre "Aujourd'hui" ne doit s'ouvrir qu'une seule fois, au moment
+  // d'une VRAIE connexion — pas à chaque rafraîchissement de page tant que
+  // la session reste active. sessionStorage n'est pas fiable pour ça sur
+  // mobile (iOS notamment le vide quand l'app repasse au premier plan) ;
+  // on marque donc explicitement l'instant de connexion via `freshLogin`,
+  // qui ne s'active que lorsqu'on vient réellement de se connecter (pas
+  // lors d'une restauration de session existante au chargement de la page).
   useEffect(() => {
-    if (!user || loading) return;
-    const key = user.id || user.email;
-    let already = false;
-    try { already = sessionStorage.getItem('planme_today_shown') === key; } catch(e) {}
-    if (already) return;
-    try { sessionStorage.setItem('planme_today_shown', key); } catch(e) {}
+    if (!user || loading || !freshLogin) return;
     setTodayOpen(true);
-  }, [user, loading]);
+    setFreshLogin(false);
+  }, [user, loading, freshLogin]);
 
   const [signingOut, setSigningOut] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -3884,7 +3884,7 @@ export default function App() {
   if (payerEmail) return <PayerRedirectScreen email={payerEmail} />;
   if (recoveryToken) return <ResetPasswordScreen token={recoveryToken} onDone={() => setRecoveryToken(null)} />;
   if (!authChecked) return null;
-  if (!user) return <AuthScreen onAuth={u => setUser(u)} initialError={pendingAuthError} initialPaymentEmail={pendingPaymentEmail} />;
+  if (!user) return <AuthScreen onAuth={u => { setFreshLogin(true); setUser(u); }} initialError={pendingAuthError} initialPaymentEmail={pendingPaymentEmail} />;
   if (loading) return <AppLoadingScreen step={loadingStep} />;
   const handleSignOut = async () => {
     if (!window.confirm("Se déconnecter de Plan Me ?")) return;
@@ -3892,7 +3892,6 @@ export default function App() {
     setTimeout(async () => {
       await auth.signOut();
       try { localStorage.removeItem("planme_last_activity"); } catch(e) {}
-      try { sessionStorage.removeItem("planme_today_shown"); } catch(e) {}
       setUser(null);
       setRobes([]); setClientes([]); setReservations([]); setEssayages([]);
       setSigningOut(false);
