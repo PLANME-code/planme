@@ -3407,6 +3407,29 @@ function AdminPanel() {
     setUsers(p => p.map(u => u.email===email ? {...u, approved:true} : u));
   };
 
+  const [relanceLoading, setRelanceLoading] = useState(null);
+
+  const relance = async (email) => {
+    setRelanceLoading(email);
+    let ok = false;
+    if (!EMAILJS_SERVICE_ID.startsWith("REMPLACE")) {
+      try {
+        const emailjs = await loadEmailJS();
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_APPROVE_ID, {
+          to_email: email,
+          email_subject: "Petit rappel — finalise ton abonnement Plan Me 💳",
+          titre: "On t'attend toujours !",
+          message: "Ton accès à Plan Me est prêt et n'attend plus que toi. Clique sur le bouton ci-dessous pour finaliser ton abonnement et débloquer ton espace complet.",
+          lien_action: `${window.location.origin}/?payer=${encodeURIComponent(email.toLowerCase().trim())}`,
+          texte_bouton: "Finaliser mon abonnement",
+        });
+        ok = true;
+      } catch(e) { console.error("Erreur envoi email relance:", e); }
+    }
+    setRelanceLoading(null);
+    alert(ok ? `Email de relance envoyé à ${email} ✓` : "L'envoi de l'email de relance a échoué.");
+  };
+
   const setPaid = async (email, plan, prix) => {
     await fetch(`${SUPABASE_URL}/rest/v1/users_approved?email=eq.${encodeURIComponent(email)}`, {
       method:"PATCH",
@@ -3522,6 +3545,11 @@ function AdminPanel() {
             }}>
               💳 En attente de paiement · 29,90€/mois pendant 3 mois, puis 39,90€/mois
             </div>
+          )}
+          {!u.paid && u.plan!=="admin" && (
+            <button onClick={()=>relance(u.email)} disabled={relanceLoading===u.email} style={{ width:"100%", padding:"8px", borderRadius:8, background:T.roseL, border:`1px solid ${T.rose}44`, color:T.rose, fontWeight:800, fontSize:11, cursor:relanceLoading===u.email?"not-allowed":"pointer", fontFamily:"inherit", marginBottom:8, opacity:relanceLoading===u.email?.6:1 }}>
+              {relanceLoading===u.email ? "Envoi..." : "📧 Relancer le paiement"}
+            </button>
           )}
           {u.plan !== "admin" && (
             <button onClick={()=>revoke(u.email)} style={{ width:"100%", padding:"8px", borderRadius:8, background:"#FFF0EC", border:"1.5px solid #F5C0B0", color:"#D04040", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
