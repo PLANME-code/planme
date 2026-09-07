@@ -1146,6 +1146,12 @@ function addMinutesToTime(time, minutes = 60) {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
+// Certaines heures viennent de la base au format HH:MM:SS — on ne veut
+// jamais afficher les secondes à l'écran.
+function displayTime(time) {
+  return String(time || "").slice(0, 5);
+}
+
 function isReservationFinished(r) {
   const endDate = r?.fin || r?.debut;
   return !!endDate && endDate < localDateString();
@@ -1775,8 +1781,8 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
                 <div style={{ display:"flex", gap:9, flexShrink:0, width:56 }}>
                   <div style={{ width:3, borderRadius:3, background:barColor, flexShrink:0 }}/>
                   <div style={{ display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                    <span style={{ fontSize:13, fontWeight:900, color:T.encre, lineHeight:1.3 }}>{e.heure}</span>
-                    {e.heure_fin && <span style={{ fontSize:11, fontWeight:700, color:T.gris, lineHeight:1.3 }}>{e.heure_fin}</span>}
+                    <span style={{ fontSize:13, fontWeight:900, color:T.encre, lineHeight:1.3 }}>{displayTime(e.heure)}</span>
+                    {e.heure_fin && <span style={{ fontSize:11, fontWeight:700, color:T.gris, lineHeight:1.3 }}>{displayTime(e.heure_fin)}</span>}
                   </div>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
@@ -3112,7 +3118,7 @@ function ClientesTab({ clientes, setClientes, reservations, essayages, robes, to
                         }
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:800, fontSize:12, color:T.encre }}>{robe?.nom||"Pièce inconnue"}</div>
-                          <div style={{ fontSize:11, color:T.gris }}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})} · {e.heure}</div>
+                          <div style={{ fontSize:11, color:T.gris }}>{new Date(e.date).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})} · {displayTime(e.heure)}</div>
                         </div>
                         <span style={{ background:T.roseL, color:T.rose, fontSize:10, fontWeight:800, padding:"3px 8px", borderRadius:100 }}>Essayage</span>
                       </div>
@@ -4018,7 +4024,7 @@ export default function App() {
                 return (
                   <div key={e.id} style={{padding:"9px 0",borderBottom:`1px solid ${T.vertM}`}}>
                     <div style={{fontSize:12.5,fontWeight:900,color:T.encre}}>
-                      {e.heure||""}{e.heure_fin ? ` → ${e.heure_fin}` : ""} · {cl?.nom||"Cliente"}
+                      {displayTime(e.heure)}{e.heure_fin ? ` → ${displayTime(e.heure_fin)}` : ""} · {cl?.nom||"Cliente"}
                     </div>
                     <div style={{fontSize:11,color:T.gris,marginTop:2}}>{robe?.nom||"Pièce"}</div>
                     {e.note && <div style={{fontSize:11,color:"#E11D48",fontWeight:800,marginTop:3}}>{e.note}</div>}
