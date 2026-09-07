@@ -1764,41 +1764,50 @@ function Essayages({ essayages, setEssayages, robes, clientes, setClientes, rese
       </div>
       {dayEss.length === 0
         ? <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"24px 16px", textAlign:"center", color:T.gris, fontSize:13 }}>Aucun essayage ce jour</div>
-        : dayEss.map((e,i) => {
+        : <div style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", overflow:"hidden" }}>
+          {dayEss.map((e,i) => {
             const r = robes.find(x=>x.id===e.rid);
             const cl = clientes.find(x=>x.id===e.cid);
+            const passe = e.date<TODAY;
+            const barColor = passe ? T.vertM : T.rose;
             return (
-              <div key={e.id} className="card-anim" style={{ background:T.blanc, borderRadius:10, border:`1px solid ${T.vertM}`, boxShadow:"0 1px 3px rgba(28,27,23,.05)", padding:"12px 14px", marginBottom:10, animationDelay:`${Math.min(i*40,320)}ms` }}>
-                <div style={{ display:"flex", gap:12, alignItems:"center", marginBottom:10 }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:800, fontSize:15, color:T.encre }}>{cl?.nom}</div>
-                    <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>
-                      {r?.nom ? `${r.nom} · ` : ""}{e.heure}{e.heure_fin ? ` → ${e.heure_fin}` : ""}
-                    </div>
-                    {e.note && <div style={{ fontSize:11, color:T.rose, marginTop:3, fontStyle:"italic" }}>{e.note}</div>}
+              <div key={e.id} className="card-anim" style={{ display:"flex", gap:12, padding:"12px 14px", borderTop:i>0?`1px solid ${T.vertM}`:"none", animationDelay:`${Math.min(i*40,320)}ms` }}>
+                <div style={{ display:"flex", gap:9, flexShrink:0, width:56 }}>
+                  <div style={{ width:3, borderRadius:3, background:barColor, flexShrink:0 }}/>
+                  <div style={{ display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                    <span style={{ fontSize:13, fontWeight:900, color:T.encre, lineHeight:1.3 }}>{e.heure}</span>
+                    {e.heure_fin && <span style={{ fontSize:11, fontWeight:700, color:T.gris, lineHeight:1.3 }}>{e.heure_fin}</span>}
                   </div>
-                  <span style={{ background:e.date<TODAY?T.vertL:T.orL, color:e.date<TODAY?T.gris:T.or, fontSize:10, fontWeight:700, padding:"3px 9px", borderRadius:100 }}>{e.date<TODAY?"Passé":"À venir"}</span>
                 </div>
-                <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-                  <button onClick={()=>{ setForm({
-                    nom:cl?.nom||"",
-                    tel:cl?.tel||"",
-                    rid:e.rid||"",
-                    robeQuery:r?.nom||"",
-                    heure:e.heure||"10:00",
-                    heureFin:e.heure_fin||addMinutesToTime(e.heure||"10:00",60),
-                    note:e.note||"",
-                    modeCliente:"existante"
-                  }); setEditEssId(e.id); setModal(true); }} style={{ padding:"6px 11px", borderRadius:7, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
-                    <Edit3 size={12}/> Modifier
-                  </button>
-                  <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("Essayage supprimé"); }} style={{ padding:"6px 11px", borderRadius:7, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
-                    <Trash2 size={12}/> Supprimer
-                  </button>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
+                    <div style={{ fontWeight:800, fontSize:14, color:T.encre, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cl?.nom}</div>
+                    <span style={{ background:passe?T.vertL:T.orL, color:passe?T.gris:T.or, fontSize:9, fontWeight:700, padding:"2px 8px", borderRadius:100, flexShrink:0 }}>{passe?"Passé":"À venir"}</span>
+                  </div>
+                  {r?.nom && <div style={{ fontSize:12, color:T.gris, marginTop:2 }}>{r.nom}</div>}
+                  {e.note && <div style={{ fontSize:11, color:T.rose, marginTop:3, fontStyle:"italic" }}>{e.note}</div>}
+                  <div style={{ display:"flex", gap:6, marginTop:8 }}>
+                    <button onClick={()=>{ setForm({
+                      nom:cl?.nom||"",
+                      tel:cl?.tel||"",
+                      rid:e.rid||"",
+                      robeQuery:r?.nom||"",
+                      heure:e.heure||"10:00",
+                      heureFin:e.heure_fin||addMinutesToTime(e.heure||"10:00",60),
+                      note:e.note||"",
+                      modeCliente:"existante"
+                    }); setEditEssId(e.id); setModal(true); }} style={{ padding:"6px 11px", borderRadius:7, background:T.vertL, border:"none", color:T.vert, fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
+                      <Edit3 size={12}/> Modifier
+                    </button>
+                    <button onClick={async()=>{ if(!window.confirm("Supprimer cet essayage ?")) return; try{await api("DELETE",`essayages?id=eq.${e.id}`,null);}catch(err){} setEssayages(p=>p.filter(x=>x.id!==e.id)); toast("Essayage supprimé"); }} style={{ padding:"6px 11px", borderRadius:7, background:T.roseL, border:"none", color:"#A5432E", fontWeight:700, fontSize:11, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
+                      <Trash2 size={12}/> Supprimer
+                    </button>
+                  </div>
                 </div>
               </div>
             );
-          })
+          })}
+          </div>
       }
       <button onClick={() => setModal(true)} className="fab-pulse" style={{ position:"fixed", bottom:90, right:20, width:56, height:56, borderRadius:"50%", background:T.rose, color:"#fff", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 6px 20px ${T.rose}55`, zIndex:150 }}>
         <Plus size={24}/>
