@@ -2092,7 +2092,45 @@ function Planning({ reservations, robes, clientes }) {
 
   const printPlanning = () => {
     if (!printFrom || !printTo) return;
-    setTimeout(() => window.print(), 80);
+
+    // ⚠️ Astuce nécessaire sur mobile (iOS notamment) : window.print() met en page
+    // le contenu en utilisant la largeur d'écran du téléphone (étroite, portrait),
+    // même quand l'utilisateur choisit "Paysage" dans la boîte de dialogue — le
+    // tableau se retrouve alors collé à gauche avec une grande zone vide à droite.
+    // On élargit temporairement le viewport pour forcer un rendu large avant
+    // d'imprimer, puis on le restaure une fois l'impression terminée.
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    const originalViewportContent = viewportMeta ? viewportMeta.getAttribute('content') : null;
+    let createdMeta = null;
+    let restored = false;
+
+    const restoreViewport = () => {
+      if (restored) return;
+      restored = true;
+      if (createdMeta) {
+        createdMeta.remove();
+      } else if (viewportMeta) {
+        if (originalViewportContent !== null) viewportMeta.setAttribute('content', originalViewportContent);
+        else viewportMeta.removeAttribute('content');
+      }
+      window.removeEventListener('afterprint', restoreViewport);
+    };
+
+    if (viewportMeta) {
+      viewportMeta.setAttribute('content', 'width=1400, initial-scale=1');
+    } else {
+      createdMeta = document.createElement('meta');
+      createdMeta.name = 'viewport';
+      createdMeta.content = 'width=1400, initial-scale=1';
+      document.head.appendChild(createdMeta);
+    }
+    window.addEventListener('afterprint', restoreViewport);
+
+    setTimeout(() => {
+      window.print();
+      // Filet de sécurité si "afterprint" n'est pas déclenché par le navigateur.
+      setTimeout(restoreViewport, 2000);
+    }, 150);
   };
 
   const printReservations = reservations
