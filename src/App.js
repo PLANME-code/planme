@@ -423,8 +423,8 @@ const injectStyles = () => {
       }
 
       .print-only img {
-        width:54px !important;
-        height:60px !important;
+        width:48px !important;
+        height:54px !important;
         border-radius:7px !important;
         object-fit:cover !important;
         display:block !important;
@@ -434,6 +434,12 @@ const injectStyles = () => {
 
       .print-client {
         font-weight:900;
+      }
+
+      .print-tel {
+        white-space:nowrap;
+        font-variant-numeric:tabular-nums;
+        color:#4A4540;
       }
 
       .print-piece {
@@ -475,8 +481,8 @@ const injectStyles = () => {
       }
 
       .print-only.print-dense img {
-        width:46px !important;
-        height:52px !important;
+        width:42px !important;
+        height:48px !important;
       }
 
       .print-only.print-very-dense th {
@@ -490,8 +496,8 @@ const injectStyles = () => {
       }
 
       .print-only.print-very-dense img {
-        width:40px !important;
-        height:46px !important;
+        width:36px !important;
+        height:42px !important;
       }
 
       .print-only.print-very-dense .print-note {
@@ -1294,24 +1300,18 @@ function Catalogue({ robes, setRobes, reservations, clientes, toast }) {
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Rechercher une pièce..." style={{ ...inputStyle, paddingLeft:40, borderRadius:100 }} />
         </div>
         {availableTailles.length > 0 && (
-          <div style={{ display:"flex", gap:7, overflowX:"auto", paddingBottom:2, marginBottom:10, WebkitOverflowScrolling:"touch" }}>
-            <button
-              type="button"
-              onClick={()=>setTailleFilter("")}
-              style={{ flexShrink:0, padding:"7px 14px", borderRadius:100, border:`1px solid ${!tailleFilter?T.rose:T.vertM}`, background:!tailleFilter?T.rose:T.blanc, color:!tailleFilter?"#fff":T.encre, fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}
+          <div style={{ position:"relative", marginBottom:12 }}>
+            <select
+              value={tailleFilter}
+              onChange={e=>setTailleFilter(e.target.value)}
+              style={{ ...inputStyle, appearance:"none", WebkitAppearance:"none", paddingRight:38, background:T.fond, fontWeight:700 }}
             >
-              Toutes
-            </button>
-            {availableTailles.map(t => (
-              <button
-                key={t}
-                type="button"
-                onClick={()=>setTailleFilter(f=>f===t?"":t)}
-                style={{ flexShrink:0, padding:"7px 14px", borderRadius:100, border:`1px solid ${tailleFilter===t?T.rose:T.vertM}`, background:tailleFilter===t?T.rose:T.blanc, color:tailleFilter===t?"#fff":T.encre, fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}
-              >
-                T.{t}
-              </button>
-            ))}
+              <option value="">Toutes les tailles</option>
+              {availableTailles.map(t => (
+                <option key={t} value={t}>Taille {t}</option>
+              ))}
+            </select>
+            <ChevronRight size={15} style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%) rotate(90deg)", color:T.gris, pointerEvents:"none" }} />
           </div>
         )}
         <div style={{ fontSize:12, fontWeight:700, color:T.gris, marginBottom:12 }}>{filtered.length} pièce{filtered.length>1?"s":""}</div>
@@ -2242,18 +2242,18 @@ function Planning({ reservations, robes, clientes }) {
 
         <table>
           <colgroup>
-            <col style={{ width:"6%" }}/>
-            <col style={{ width:"10%" }}/>
+            <col style={{ width:"5%" }}/>
             <col style={{ width:"9%" }}/>
-            <col style={{ width:"13%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"7%" }}/>
+            <col style={{ width:"8%" }}/>
+            <col style={{ width:"12%" }}/>
+            <col style={{ width:"6%" }}/>
+            <col style={{ width:"6%" }}/>
+            <col style={{ width:"5%" }}/>
             <col style={{ width:"6%" }}/>
             <col style={{ width:"6%" }}/>
             <col style={{ width:"6%" }}/>
             <col style={{ width:"6%" }}/>
-            <col style={{ width:"7%" }}/>
-            <col style={{ width:"17%" }}/>
+            <col style={{ width:"25%" }}/>
           </colgroup>
 
           <thead>
@@ -2300,7 +2300,7 @@ function Planning({ reservations, robes, clientes }) {
                       : "—"}
                   </td>
                   <td className="print-client">{cl?.nom||"—"}</td>
-                  <td className="print-status">{cl?.tel||"—"}</td>
+                  <td className="print-tel">{cl?.tel||"—"}</td>
                   <td className="print-piece">{robe?.nom||"—"}</td>
                   <td>{formatPrintDay(r.debut)}</td>
                   <td>{formatPrintDay(r.fin||r.debut)}</td>
